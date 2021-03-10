@@ -15,6 +15,8 @@ go build -o graphsplit graphsplit.go utils.go
 ```
 
 ## Usage
+
+Splitting dataset:
 ```sh
 # car-dir: folder for splitted smaller pieces, in form of .car
 # slice-size: size for each pieces
@@ -28,6 +30,11 @@ go build -o graphsplit graphsplit.go utils.go
 --graph-name=gs-test \
 --parent-path=/path/to/dataset \
 /path/to/dataset
+```
+
+Import car file to ipfs: 
+```
+ipfs dag import /path/to/car/file
 ```
 
 ## Contribute
