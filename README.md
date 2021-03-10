@@ -21,7 +21,13 @@ go build -o graphsplit graphsplit.go utils.go
 # parallel: number goroutines run when building ipld nodes
 # graph-name: it will use graph-name for prefix of smaller pieces
 # parent-path: usually just be the same as /path/to/dataset, it's just a method to figure out relative path when building IPLD graph
-./graphsplit chunk --car-dir=path/to/car-dir --slice-size=17179869184 --parallel=2 --graph-name=gs-test --parent-path=/path/to/dataset /path/to/dataset
+./graphsplit chunk \
+--car-dir=path/to/car-dir \
+--slice-size=17179869184 \
+--parallel=2 \
+--graph-name=gs-test \
+--parent-path=/path/to/dataset \
+/path/to/dataset
 ```
 
 ## Contribute
