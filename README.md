@@ -31,10 +31,16 @@ Splitting dataset:
 --parent-path=/path/to/dataset \
 /path/to/dataset
 ```
+Notes: A manifest.csv will created to save the mapping with graph slice name and the payload cid. As following:
+```sh
+cat /path/to/car-dir/manifest.csv
+playload_cid,filename
+Qm...,graph-slice-name.car
+```
 
 Import car file to ipfs: 
-```
-ipfs dag import /path/to/car/file
+```sh
+ipfs dag import /path/to/car-dir/car-file
 ```
 
 ## Contribute
