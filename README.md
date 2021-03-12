@@ -1,6 +1,6 @@
 go-graphsplit
 ==================
-> A tool for splitting large dataset into graph slices feat for making deal in filecoin network.
+> A tool for splitting large dataset into graph slices feat for making deal in the Filecoin Network.
 
 
 When storing a large dataset in the Filecoin Network, we have to split it into smaller pieces to feat for the size of sector, which could be 32GiB or 64GiB.
