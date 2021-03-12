@@ -347,6 +347,9 @@ func GetGraphCount(args []string, sliceSize int64) int {
 		}
 		totalSize += finfo.Size()
 	}
+	if totalSize == 0 {
+		return 0
+	}
 	count := (totalSize / sliceSize) + 1
 	return int(count)
 }
