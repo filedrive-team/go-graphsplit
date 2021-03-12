@@ -76,7 +76,6 @@ var chunkCmd = &cli.Command{
 
 		args := c.Args().Slice()
 		sliceTotal := GetGraphCount(args, sliceSize)
-		log.Info(sliceTotal)
 		if sliceTotal == 0 {
 			log.Warn("Empty folder or file!")
 			return nil
