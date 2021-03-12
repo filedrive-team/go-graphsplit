@@ -8,6 +8,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 	"github.com/urfave/cli/v2"
+	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("graphsplit")
@@ -69,6 +70,9 @@ var chunkCmd = &cli.Command{
 		graphName := c.String("graph-name")
 		graphSliceCount := 0
 		graphFiles := make([]Finfo, 0)
+		if sliceSize == 0 {
+			return xerrors.Errorf("Unexpected! Slice size has been set as 0")
+		}
 
 		args := c.Args().Slice()
 		sliceTotal := GetGraphCount(args, sliceSize)
