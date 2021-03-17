@@ -1,4 +1,4 @@
-go-graphsplit
+Go-graphsplit
 ==================
 > A tool for splitting large dataset into graph slices feat for making deal in the Filecoin Network.
 
