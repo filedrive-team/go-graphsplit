@@ -38,7 +38,7 @@ payload_cid,filename
 Qm...,graph-slice-name.car
 ```
 
-Import car file to ipfs: 
+Import car file to IPFS: 
 ```sh
 ipfs dag import /path/to/car-dir/car-file
 ```
