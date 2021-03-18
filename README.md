@@ -34,7 +34,7 @@ Splitting dataset:
 Notes: A manifest.csv will created to save the mapping with graph slice name and the payload cid. As following:
 ```sh
 cat /path/to/car-dir/manifest.csv
-playload_cid,filename
+payload_cid,filename
 Qm...,graph-slice-name.car
 ```
 
