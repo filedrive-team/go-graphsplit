@@ -1,11 +1,11 @@
 Go-graphsplit
 ==================
-> A tool for splitting large dataset into graph slices feat for making deal in the Filecoin Network.
+> A tool for splitting large dataset into graph slices fit for making deal in the Filecoin Network.
 
 
-When storing a large dataset in the Filecoin Network, we have to split it into smaller pieces to feat for the size of sector, which could be 32GiB or 64GiB.
+When storing a large dataset in the Filecoin Network, we have to split it into smaller pieces to fit for the size of sector, which could be 32GiB or 64GiB.
 
-At first, we make the dataset into a large tar ball, chunking this tar ball into pieces, and then use each piece to make deal with storage miners. We did this way for a while until we realized it brought difficulties to retrieval. Even if we only needed to retrieve a small file in the dataset, we had to retrieve all the pieces of the tar ball at first. 
+At first, we made the dataset into a large tar ball, did chunking this tar ball into pieces, and then used each piece to make deal with storage miners. We did this way for a while until we realized it brought difficulties to retrieval. Even if we only needed to retrieve a small file in the dataset, we had to retrieve all the pieces of the tar ball at first. 
 
 Graphsplit has solved the problem we faced above. It takes advantage of IPLD concepts, following the [unixfs](https://github.com/ipfs/go-unixfs) format datastructures. It regards the dataset or it's sub-directory as a big graph and then cut the big graph into small graphs. The small graphs will keep its file system structure as possible as its in big graph. After that, we only need to organize small graph into a car file according to [unixfs](https://github.com/ipfs/go-unixfs).
 
