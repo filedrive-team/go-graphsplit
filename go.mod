@@ -12,6 +12,7 @@ require (
 	github.com/ipfs/go-ipfs-blockstore v1.0.3
 	github.com/ipfs/go-ipfs-chunker v0.0.5
 	github.com/ipfs/go-ipfs-exchange-offline v0.0.1
+	github.com/ipfs/go-ipfs-files v0.0.8
 	github.com/ipfs/go-ipld-cbor v0.0.5-0.20200204214505-252690b78669 // indirect
 	github.com/ipfs/go-ipld-format v0.2.0
 	github.com/ipfs/go-log/v2 v2.1.2

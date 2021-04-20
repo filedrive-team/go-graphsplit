@@ -11,7 +11,7 @@ Graphsplit has solved the problem we faced above. It takes advantage of IPLD con
 
 ## Build
 ```sh
-go build -o graphsplit graphsplit.go utils.go
+make
 ```
 
 ## Usage
@@ -41,6 +41,17 @@ Qm...,graph-slice-name.car
 Import car file to IPFS: 
 ```sh
 ipfs dag import /path/to/car-dir/car-file
+```
+
+Retrieve files:
+```sh
+# car-path: directory or file, in form of .car
+# output-dir: usually just be the same as /path/to/output-dir
+# parallel: number goroutines run when retrieving
+./graphsplit retrieve \
+--car-path=/path/to/car-path \
+--output-dir=/path/to/output-dir \
+--parallel=2
 ```
 
 ## Contribute

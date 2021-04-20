@@ -3,12 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
-
 	logging "github.com/ipfs/go-log/v2"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
+	"os"
 )
 
 var log = logging.Logger("graphsplit")
@@ -17,6 +16,7 @@ func main() {
 	logging.SetLogLevel("*", "INFO")
 	local := []*cli.Command{
 		chunkCmd,
+		retrieveCmd,
 	}
 
 	app := &cli.App{
@@ -33,7 +33,7 @@ func main() {
 
 var chunkCmd = &cli.Command{
 	Name:  "chunk",
-	Usage: "",
+	Usage: "Generate CAR files of the specified size",
 	Flags: []cli.Flag{
 		&cli.Int64Flag{
 			Name:  "slice-size",
@@ -58,6 +58,7 @@ var chunkCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:     "car-dir",
 			Required: true,
+			Usage:    fmt.Sprintf("specify output CAR directory"),
 		},
 	},
 	Action: func(c *cli.Context) error {
@@ -154,7 +155,6 @@ var chunkCmd = &cli.Command{
 				}
 
 			}
-
 		}
 		if cumuSize > 0 {
 			// todo build ipld from graphFiles
@@ -163,6 +163,39 @@ var chunkCmd = &cli.Command{
 			fmt.Printf(GenGraphName(graphName, graphSliceCount, sliceTotal))
 			fmt.Printf("=================\n")
 		}
+		return nil
+	},
+}
+
+var retrieveCmd = &cli.Command{
+	Name:  "retrieve",
+	Usage: "Retrieve files from CAR files",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "car-path",
+			Required: true,
+			Usage:    fmt.Sprintf("specify source car path, directory or file"),
+		},
+		&cli.StringFlag{
+			Name:     "output-dir",
+			Required: true,
+			Usage:    fmt.Sprintf("specify output directory"),
+		},
+		&cli.IntFlag{
+			Name:  "parallel",
+			Value: 4,
+			Usage: fmt.Sprintf("specify how many number of goroutines runs when generate file node"),
+		},
+	},
+	Action: func(c *cli.Context) error {
+		parallel := c.Int("parallel")
+		outputDir := c.String("output-dir")
+		carPath := c.String("car-path")
+
+		CarTo(carPath, outputDir, parallel)
+		Merge(outputDir, parallel)
+
+		fmt.Println("completed!")
 		return nil
 	},
 }
