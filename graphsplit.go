@@ -3,12 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
-
 	logging "github.com/ipfs/go-log/v2"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
+	"os"
 )
 
 var log = logging.Logger("graphsplit")
@@ -17,6 +16,7 @@ func main() {
 	logging.SetLogLevel("*", "INFO")
 	local := []*cli.Command{
 		chunkCmd,
+		retrieveCmd,
 	}
 
 	app := &cli.App{
@@ -33,31 +33,32 @@ func main() {
 
 var chunkCmd = &cli.Command{
 	Name:  "chunk",
-	Usage: "",
+	Usage: "Generate CAR files of the specified size",
 	Flags: []cli.Flag{
 		&cli.Int64Flag{
 			Name:  "slice-size",
 			Value: 17179869184, // 16G
-			Usage: fmt.Sprintf("specify chunk piece size"),
+			Usage: "specify chunk piece size",
 		},
 		&cli.IntFlag{
 			Name:  "parallel",
 			Value: 4,
-			Usage: fmt.Sprintf("specify how many number of goroutines runs when generate file node"),
+			Usage: "specify how many number of goroutines runs when generate file node",
 		},
 		&cli.StringFlag{
 			Name:     "graph-name",
 			Required: true,
-			Usage:    fmt.Sprintf("specify graph name"),
+			Usage:    "specify graph name",
 		},
 		&cli.StringFlag{
 			Name:  "parent-path",
 			Value: "",
-			Usage: fmt.Sprintf("specify graph parent path"),
+			Usage: "specify graph parent path",
 		},
 		&cli.StringFlag{
 			Name:     "car-dir",
 			Required: true,
+			Usage:    "specify output CAR directory",
 		},
 	},
 	Action: func(c *cli.Context) error {
@@ -72,6 +73,9 @@ var chunkCmd = &cli.Command{
 		graphFiles := make([]Finfo, 0)
 		if sliceSize == 0 {
 			return xerrors.Errorf("Unexpected! Slice size has been set as 0")
+		}
+		if parallel <= 0 {
+			return xerrors.Errorf("Unexpected! Parallel has to be greater than 0")
 		}
 
 		args := c.Args().Slice()
@@ -154,7 +158,6 @@ var chunkCmd = &cli.Command{
 				}
 
 			}
-
 		}
 		if cumuSize > 0 {
 			// todo build ipld from graphFiles
@@ -163,6 +166,42 @@ var chunkCmd = &cli.Command{
 			fmt.Printf(GenGraphName(graphName, graphSliceCount, sliceTotal))
 			fmt.Printf("=================\n")
 		}
+		return nil
+	},
+}
+
+var retrieveCmd = &cli.Command{
+	Name:  "retrieve",
+	Usage: "Retrieve files from CAR files",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "car-path",
+			Required: true,
+			Usage:    "specify source car path, directory or file",
+		},
+		&cli.StringFlag{
+			Name:     "output-dir",
+			Required: true,
+			Usage:    "specify output directory",
+		},
+		&cli.IntFlag{
+			Name:  "parallel",
+			Value: 4,
+			Usage: "specify how many number of goroutines runs when generate file node",
+		},
+	},
+	Action: func(c *cli.Context) error {
+		parallel := c.Int("parallel")
+		outputDir := c.String("output-dir")
+		carPath := c.String("car-path")
+		if parallel <= 0 {
+			return xerrors.Errorf("Unexpected! Parallel has to be greater than 0")
+		}
+
+		CarTo(carPath, outputDir, parallel)
+		Merge(outputDir, parallel)
+
+		fmt.Println("completed!")
 		return nil
 	},
 }
