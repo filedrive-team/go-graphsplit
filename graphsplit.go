@@ -74,6 +74,9 @@ var chunkCmd = &cli.Command{
 		if sliceSize == 0 {
 			return xerrors.Errorf("Unexpected! Slice size has been set as 0")
 		}
+		if parallel <= 0 {
+			return xerrors.Errorf("Unexpected! Parallel has to be greater than 0")
+		}
 
 		args := c.Args().Slice()
 		sliceTotal := GetGraphCount(args, sliceSize)
@@ -191,6 +194,9 @@ var retrieveCmd = &cli.Command{
 		parallel := c.Int("parallel")
 		outputDir := c.String("output-dir")
 		carPath := c.String("car-path")
+		if parallel <= 0 {
+			return xerrors.Errorf("Unexpected! Parallel has to be greater than 0")
+		}
 
 		CarTo(carPath, outputDir, parallel)
 		Merge(outputDir, parallel)
