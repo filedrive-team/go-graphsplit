@@ -16,7 +16,7 @@ func main() {
 	logging.SetLogLevel("*", "INFO")
 	local := []*cli.Command{
 		chunkCmd,
-		retrieveCmd,
+		restoreCmd,
 	}
 
 	app := &cli.App{
@@ -170,9 +170,9 @@ var chunkCmd = &cli.Command{
 	},
 }
 
-var retrieveCmd = &cli.Command{
-	Name:  "retrieve",
-	Usage: "Retrieve files from CAR files",
+var restoreCmd = &cli.Command{
+	Name:  "restore",
+	Usage: "Restore files from CAR files",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:     "car-path",
