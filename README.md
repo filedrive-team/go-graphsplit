@@ -43,12 +43,12 @@ Import car file to IPFS:
 ipfs dag import /path/to/car-dir/car-file
 ```
 
-Retrieve files:
+Restore files:
 ```sh
 # car-path: directory or file, in form of .car
 # output-dir: usually just be the same as /path/to/output-dir
-# parallel: number goroutines run when retrieving
-./graphsplit retrieve \
+# parallel: number goroutines run when restoring
+./graphsplit restore \
 --car-path=/path/to/car-path \
 --output-dir=/path/to/output-dir \
 --parallel=2
