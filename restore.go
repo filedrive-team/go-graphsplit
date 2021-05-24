@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	pa "path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -108,6 +109,10 @@ func CarTo(carPath, outputDir string, parallel int) {
 				return err
 			}
 			if fi.IsDir() {
+				return nil
+			}
+			if strings.ToLower(pa.Ext(fi.Name())) != ".car" {
+				log.Warn(path, ", it's not a CAR file, skip it")
 				return nil
 			}
 			workerCh <- func() {
