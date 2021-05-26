@@ -5,9 +5,9 @@ Go-graphsplit
 
 When storing a large dataset in the Filecoin Network, we have to split it into smaller pieces to fit for the size of sector, which could be 32GiB or 64GiB.
 
-At first, we made the dataset into a large tar ball, and chunking this tar ball into small pieces, and then make deal with storage miners for each piece. We did this way for a while until we realized that it brought a difficulty for data retrieval. Even if we only needed to retrieve a small file in the dataset, we had to retrieve all the pieces of the tar ball at first. 
+At first, we made the dataset into a large tar ball, did chunking this tar ball into small pieces, and then make deals with storage miners with these pieces. We did this way for a while until we realized that it brought a difficulty for data retrieval. Even if we only needed to retrieve a small file in the dataset, we had to retrieve all the pieces of the tar ball at first. 
 
-Graphsplit has solved the problem we faced above. It takes advantage of IPLD concepts, following the [unixfs](https://github.com/ipfs/go-unixfs) format datastructures. It regards the dataset or it's sub-directory as a big graph and then cut it into small graphs. The small graphs will keep its file system structure as possible as its used be. After that, we only need to organize the small graph into a car file according to [unixfs](https://github.com/ipfs/go-unixfs).
+Graphsplit has solved the problem we faced above. It takes advantage of IPLD concepts, following the [unixfs](https://github.com/ipfs/go-unixfs) format datastructures. It regards the dataset or it's sub-directory as a big graph and then cut it into small graphs. Each small graph will keep its file system structure as possible as its used be. After that, we only need to organize these small graphs into a car file according to [unixfs](https://github.com/ipfs/go-unixfs).
 
 ## Build
 ```sh
