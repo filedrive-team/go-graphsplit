@@ -52,11 +52,6 @@ var chunkCmd = &cli.Command{
 			Usage:    "specify graph name",
 		},
 		&cli.StringFlag{
-			Name:  "parent-path",
-			Value: "",
-			Usage: "specify graph parent path",
-		},
-		&cli.StringFlag{
 			Name:     "car-dir",
 			Required: true,
 			Usage:    "specify output CAR directory",
@@ -66,7 +61,6 @@ var chunkCmd = &cli.Command{
 		ctx := context.Background()
 		parallel := c.Uint("parallel")
 		sliceSize := c.Uint64("slice-size")
-		parentPath := c.String("parent-path")
 		carDir := c.String("car-dir")
 		graphName := c.String("graph-name")
 		if sliceSize == 0 {
@@ -74,7 +68,7 @@ var chunkCmd = &cli.Command{
 		}
 
 		targetPath := c.Args().First()
-		return graphsplit.Chunk(ctx, int64(sliceSize), parentPath, targetPath, carDir, graphName, int(parallel))
+		return graphsplit.Chunk(ctx, int64(sliceSize), targetPath, carDir, graphName, int(parallel))
 	},
 }
 
