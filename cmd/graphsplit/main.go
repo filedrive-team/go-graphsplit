@@ -52,14 +52,19 @@ var chunkCmd = &cli.Command{
 			Usage:    "specify graph name",
 		},
 		&cli.StringFlag{
+			Name:     "car-dir",
+			Required: true,
+			Usage:    "specify output CAR directory",
+		},
+		&cli.StringFlag{
 			Name:  "parent-path",
 			Value: "",
 			Usage: "specify graph parent path",
 		},
-		&cli.StringFlag{
-			Name:     "car-dir",
-			Required: true,
-			Usage:    "specify output CAR directory",
+		&cli.BoolFlag{
+			Name:  "save-manifest",
+			Value: true,
+			Usage: "create a mainfest.csv in car-dir to save mapping of data-cids and slice names",
 		},
 	},
 	Action: func(c *cli.Context) error {
@@ -74,7 +79,13 @@ var chunkCmd = &cli.Command{
 		}
 
 		targetPath := c.Args().First()
-		return graphsplit.Chunk(ctx, int64(sliceSize), parentPath, targetPath, carDir, graphName, int(parallel))
+		var cb graphsplit.GraphBuildCallback
+		if c.Bool("save-manifest") {
+			cb = graphsplit.CSVCallback(carDir)
+		} else {
+			cb = graphsplit.ErrCallback()
+		}
+		return graphsplit.Chunk(ctx, int64(sliceSize), parentPath, targetPath, carDir, graphName, int(parallel), cb)
 	},
 }
 
