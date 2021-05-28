@@ -66,7 +66,7 @@ func ErrCallback() GraphBuildCallback {
 	return &errCallback{}
 }
 
-func Chunk(ctx context.Context, sliceSize int64, targetPath, carDir, graphName string, parallel int, cb GraphBuildCallback) error {
+func Chunk(ctx context.Context, sliceSize int64, parentPath, targetPath, carDir, graphName string, parallel int, cb GraphBuildCallback) error {
 	var cumuSize int64 = 0
 	graphSliceCount := 0
 	graphFiles := make([]Finfo, 0)
@@ -75,6 +75,9 @@ func Chunk(ctx context.Context, sliceSize int64, targetPath, carDir, graphName s
 	}
 	if parallel <= 0 {
 		return xerrors.Errorf("Unexpected! Parallel has to be greater than 0")
+	}
+	if parentPath == "" {
+		parentPath = targetPath
 	}
 
 	args := []string{targetPath}
@@ -94,7 +97,7 @@ func Chunk(ctx context.Context, sliceSize int64, targetPath, carDir, graphName s
 			cumuSize += fileSize
 			graphFiles = append(graphFiles, item)
 			// todo build ipld from graphFiles
-			BuildIpldGraph(ctx, graphFiles, GenGraphName(graphName, graphSliceCount, sliceTotal), targetPath, carDir, parallel, cb)
+			BuildIpldGraph(ctx, graphFiles, GenGraphName(graphName, graphSliceCount, sliceTotal), parentPath, carDir, parallel, cb)
 			fmt.Printf("cumu-size: %d\n", cumuSize)
 			fmt.Printf(GenGraphName(graphName, graphSliceCount, sliceTotal))
 			fmt.Printf("=================\n")
@@ -120,7 +123,7 @@ func Chunk(ctx context.Context, sliceSize int64, targetPath, carDir, graphName s
 			})
 			fileSliceCount++
 			// todo build ipld from graphFiles
-			BuildIpldGraph(ctx, graphFiles, GenGraphName(graphName, graphSliceCount, sliceTotal), targetPath, carDir, parallel, cb)
+			BuildIpldGraph(ctx, graphFiles, GenGraphName(graphName, graphSliceCount, sliceTotal), parentPath, carDir, parallel, cb)
 			fmt.Printf("cumu-size: %d\n", cumuSize+firstCut)
 			fmt.Printf(GenGraphName(graphName, graphSliceCount, sliceTotal))
 			fmt.Printf("=================\n")
@@ -146,7 +149,7 @@ func Chunk(ctx context.Context, sliceSize int64, targetPath, carDir, graphName s
 				fileSliceCount++
 				if seekEnd-seekStart == sliceSize-1 {
 					// todo build ipld from graphFiles
-					BuildIpldGraph(ctx, graphFiles, GenGraphName(graphName, graphSliceCount, sliceTotal), targetPath, carDir, parallel, cb)
+					BuildIpldGraph(ctx, graphFiles, GenGraphName(graphName, graphSliceCount, sliceTotal), parentPath, carDir, parallel, cb)
 					fmt.Printf("cumu-size: %d\n", sliceSize)
 					fmt.Printf(GenGraphName(graphName, graphSliceCount, sliceTotal))
 					fmt.Printf("=================\n")
@@ -160,7 +163,7 @@ func Chunk(ctx context.Context, sliceSize int64, targetPath, carDir, graphName s
 	}
 	if cumuSize > 0 {
 		// todo build ipld from graphFiles
-		BuildIpldGraph(ctx, graphFiles, GenGraphName(graphName, graphSliceCount, sliceTotal), targetPath, carDir, parallel, cb)
+		BuildIpldGraph(ctx, graphFiles, GenGraphName(graphName, graphSliceCount, sliceTotal), parentPath, carDir, parallel, cb)
 		fmt.Printf("cumu-size: %d\n", cumuSize)
 		fmt.Printf(GenGraphName(graphName, graphSliceCount, sliceTotal))
 		fmt.Printf("=================\n")
