@@ -45,36 +45,14 @@ type Finfo struct {
 	SeekEnd   int64
 }
 
-func BuildIpldGraph(ctx context.Context, fileList []Finfo, graphName, parentPath, carDir string, parallel int) {
+func BuildIpldGraph(ctx context.Context, fileList []Finfo, graphName, parentPath, carDir string, parallel int, cb GraphBuildCallback) {
 	node, err := buildIpldGraph(ctx, fileList, parentPath, carDir, parallel)
 	if err != nil {
-		log.Fatal(err)
+		//log.Fatal(err)
+		cb.OnError(err)
+		return
 	}
-	// TODO: save node info
-	// Add node inof to manifest.csv
-	manifestPath := path.Join(carDir, "manifest.csv")
-	_, err = os.Stat(manifestPath)
-	if err != nil && !os.IsNotExist(err) {
-		log.Fatal(err)
-	}
-	var isCreateAction bool
-	if err != nil && os.IsNotExist(err) {
-		isCreateAction = true
-	}
-	f, err := os.OpenFile(manifestPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer f.Close()
-	if isCreateAction {
-		if _, err := f.Write([]byte("playload_cid,filename\n")); err != nil {
-			log.Fatal(err)
-		}
-	}
-	if _, err := f.Write([]byte(fmt.Sprintf("%s,%s\n", node.Cid(), graphName))); err != nil {
-		log.Fatal(err)
-	}
-
+	cb.OnSuccess(node, graphName)
 }
 
 func buildIpldGraph(ctx context.Context, fileList []Finfo, parentPath, carDir string, parallel int) (ipld.Node, error) {
