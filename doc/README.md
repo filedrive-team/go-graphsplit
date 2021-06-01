@@ -22,4 +22,4 @@ At the end, process the rest of the file list, import files from one small graph
 Firstly, traverse the CAR file directory to check if there is any unprocessed file.
 
 1. If yes, load CAR files into IPLD nodes. After processing, export files from IPLD nodes. And then traverse the CAR file directory again to check if there is any unprocessed files.
-1. If no, traverse the output directory directly, search file slices according to special suffix and merge slices of the same file into one file.
+2. If no, traverse the output directory directly, search file slices according to special suffix and merge slices of the same file into one file.
