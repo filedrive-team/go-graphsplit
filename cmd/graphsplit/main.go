@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/filedrive-team/go-graphsplit"
-	"github.com/filedrive-team/go-graphsplit/piece"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -68,6 +67,11 @@ var chunkCmd = &cli.Command{
 			Value: true,
 			Usage: "create a mainfest.csv in car-dir to save mapping of data-cids and slice names",
 		},
+		&cli.BoolFlag{
+			Name:  "calc-commp",
+			Value: false,
+			Usage: "calculate pieceCID and pieceSize",
+		},
 	},
 	Action: func(c *cli.Context) error {
 		ctx := context.Background()
@@ -82,7 +86,9 @@ var chunkCmd = &cli.Command{
 
 		targetPath := c.Args().First()
 		var cb graphsplit.GraphBuildCallback
-		if c.Bool("save-manifest") {
+		if c.Bool("calc-commp") {
+			cb = graphsplit.CommPCallback(carDir)
+		} else if c.Bool("save-manifest") {
 			cb = graphsplit.CSVCallback(carDir)
 		} else {
 			cb = graphsplit.ErrCallback()
@@ -135,7 +141,7 @@ var commpCmd = &cli.Command{
 		ctx := context.Background()
 		targetPath := c.Args().First()
 
-		res, err := piece.CalcCommP(ctx, targetPath)
+		res, err := graphsplit.CalcCommP(ctx, targetPath)
 		if err != nil {
 			return err
 		}

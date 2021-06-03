@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"time"
 
 	ipld "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log/v2"
@@ -16,6 +17,47 @@ var log = logging.Logger("graphsplit")
 type GraphBuildCallback interface {
 	OnSuccess(node ipld.Node, graphName string)
 	OnError(error)
+}
+
+type commPCallback struct {
+	carDir string
+}
+
+func (cc *commPCallback) OnSuccess(node ipld.Node, graphName string) {
+	commpStartTime := time.Now()
+	carfilepath := path.Join(cc.carDir, node.Cid().String()+".car")
+	cpRes, err := CalcCommP(context.TODO(), carfilepath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Infof("calculation of pieceCID completed, time elapsed: %s", time.Now().Sub(commpStartTime))
+	// Add node inof to manifest.csv
+	manifestPath := path.Join(cc.carDir, "manifest.csv")
+	_, err = os.Stat(manifestPath)
+	if err != nil && !os.IsNotExist(err) {
+		log.Fatal(err)
+	}
+	var isCreateAction bool
+	if err != nil && os.IsNotExist(err) {
+		isCreateAction = true
+	}
+	f, err := os.OpenFile(manifestPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
+	if isCreateAction {
+		if _, err := f.Write([]byte("playload_cid,filename,piece_cid,piece_size\n")); err != nil {
+			log.Fatal(err)
+		}
+	}
+	if _, err := f.Write([]byte(fmt.Sprintf("%s,%s,%s,%d\n", node.Cid(), graphName, cpRes.Root.String(), cpRes.Size))); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func (cc *commPCallback) OnError(err error) {
+	log.Fatal(err)
 }
 
 type csvCallback struct {
@@ -57,6 +99,10 @@ type errCallback struct{}
 func (cc *errCallback) OnSuccess(ipld.Node, string) {}
 func (cc *errCallback) OnError(err error) {
 	log.Fatal(err)
+}
+
+func CommPCallback(carDir string) GraphBuildCallback {
+	return &commPCallback{carDir: carDir}
 }
 
 func CSVCallback(carDir string) GraphBuildCallback {

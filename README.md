@@ -34,12 +34,14 @@ Splitting dataset:
 # slice-size: size for each pieces
 # parallel: number goroutines run when building ipld nodes
 # graph-name: it will use graph-name for prefix of smaller pieces
+# calc-commp: calculation of pieceCID, default value is false. Be careful, a lot of cpu and memory would be consumed if slice size is very large.
 # parent-path: usually just be the same as /path/to/dataset, it's just a method to figure out relative path when building IPLD graph
 ./graphsplit chunk \
 --car-dir=path/to/car-dir \
 --slice-size=17179869184 \
 --parallel=2 \
 --graph-name=gs-test \
+--calc-commp=false \
 --parent-path=/path/to/dataset \
 /path/to/dataset
 ```
@@ -66,7 +68,7 @@ Restore files:
 --parallel=2
 ```
 
-PieceCID Calculation:
+PieceCID Calculation for a single car file:
 
 
 ```shell
