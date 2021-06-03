@@ -58,6 +58,24 @@ Restore files:
 --parallel=2
 ```
 
+## PieceCID
+Import filecoin-ffi as submodule
+```shell
+git submodule update --init --recursive
+```
+Build filecoin-ffi
+```shell
+make ffi
+```
+Build commp
+```shell
+make commp
+```
+Calculate pieceCID for a car file
+```shell
+./commp single /path/to/carfile
+```
+
 ## Contribute
 
 PRs are welcome!
