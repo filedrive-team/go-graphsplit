@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/filedrive-team/go-graphsplit"
+	"github.com/filedrive-team/go-graphsplit/piece"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -18,6 +19,7 @@ func main() {
 	local := []*cli.Command{
 		chunkCmd,
 		restoreCmd,
+		commpCmd,
 	}
 
 	app := &cli.App{
@@ -121,6 +123,24 @@ var restoreCmd = &cli.Command{
 		graphsplit.Merge(outputDir, parallel)
 
 		fmt.Println("completed!")
+		return nil
+	},
+}
+
+var commpCmd = &cli.Command{
+	Name:  "commP",
+	Usage: "PieceCID and PieceSize calculation",
+	Flags: []cli.Flag{},
+	Action: func(c *cli.Context) error {
+		ctx := context.Background()
+		targetPath := c.Args().First()
+
+		res, err := piece.CalcCommP(ctx, targetPath)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("PieceCID: %s, PieceSize: %d\n", res.Root, res.Size)
 		return nil
 	},
 }

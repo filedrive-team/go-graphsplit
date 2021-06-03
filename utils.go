@@ -432,3 +432,17 @@ func GetFileList(args []string) (fileList []string, err error) {
 
 	return
 }
+
+// piece info
+type PieceInfo struct {
+	PayloadCid string `csv:"payload_cid"`
+	Filename   string `csv:"filename"`
+	PieceCid   string `csv:"piece_cid"`
+	PieceSize  uint64 `csv:"piece_size"`
+}
+
+// manifest
+type Manifest struct {
+	PayloadCid string `csv:"payload_cid"`
+	Filename   string `csv:"filename"`
+}

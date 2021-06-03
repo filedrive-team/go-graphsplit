@@ -10,7 +10,4 @@ ffi:
 .PHONY: ffi
 
 
-commp: 
-	go build -ldflags "-s -w" -o commp ./cmd/commp/main.go
-.PHONY: commp
 

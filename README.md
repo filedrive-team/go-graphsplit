@@ -12,7 +12,15 @@ Graphsplit has solved the problem we faced above. It takes advantage of IPLD con
 ## Build
 ```sh
 git clone https://github.com/filedrive-team/go-graphsplit.git
+
 cd go-graphsplit
+
+// get submodules
+git submodule update --init --recursive
+
+// build filecoin-ffi
+make ffi
+
 make
 ```
 
@@ -58,22 +66,13 @@ Restore files:
 --parallel=2
 ```
 
-## PieceCID
-Import filecoin-ffi as submodule
+PieceCID Calculation:
+
+
 ```shell
-git submodule update --init --recursive
-```
-Build filecoin-ffi
-```shell
-make ffi
-```
-Build commp
-```shell
-make commp
-```
-Calculate pieceCID for a car file
-```shell
-./commp single /path/to/carfile
+# Calculate pieceCID for a single car file
+# 
+./graphsplit commP /path/to/carfile
 ```
 
 ## Contribute
