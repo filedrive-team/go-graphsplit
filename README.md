@@ -18,6 +18,8 @@ make
 
 ## Usage
 
+[See the work flow of graphsplit](doc/README.md)
+
 Splitting dataset:
 ```sh
 # car-dir: folder for splitted smaller pieces, in form of .car
