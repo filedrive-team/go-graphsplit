@@ -70,7 +70,7 @@ var chunkCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "calc-commp",
 			Value: false,
-			Usage: "calculate pieceCID and pieceSize",
+			Usage: "create a mainfest.csv in car-dir to save mapping of data-cids, slice names, piece-cids and piece-sizes",
 		},
 	},
 	Action: func(c *cli.Context) error {
