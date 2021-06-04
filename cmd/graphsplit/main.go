@@ -18,6 +18,7 @@ func main() {
 	local := []*cli.Command{
 		chunkCmd,
 		restoreCmd,
+		commpCmd,
 	}
 
 	app := &cli.App{
@@ -66,6 +67,11 @@ var chunkCmd = &cli.Command{
 			Value: true,
 			Usage: "create a mainfest.csv in car-dir to save mapping of data-cids and slice names",
 		},
+		&cli.BoolFlag{
+			Name:  "calc-commp",
+			Value: false,
+			Usage: "create a mainfest.csv in car-dir to save mapping of data-cids, slice names, piece-cids and piece-sizes",
+		},
 	},
 	Action: func(c *cli.Context) error {
 		ctx := context.Background()
@@ -80,7 +86,9 @@ var chunkCmd = &cli.Command{
 
 		targetPath := c.Args().First()
 		var cb graphsplit.GraphBuildCallback
-		if c.Bool("save-manifest") {
+		if c.Bool("calc-commp") {
+			cb = graphsplit.CommPCallback(carDir)
+		} else if c.Bool("save-manifest") {
 			cb = graphsplit.CSVCallback(carDir)
 		} else {
 			cb = graphsplit.ErrCallback()
@@ -121,6 +129,24 @@ var restoreCmd = &cli.Command{
 		graphsplit.Merge(outputDir, parallel)
 
 		fmt.Println("completed!")
+		return nil
+	},
+}
+
+var commpCmd = &cli.Command{
+	Name:  "commP",
+	Usage: "PieceCID and PieceSize calculation",
+	Flags: []cli.Flag{},
+	Action: func(c *cli.Context) error {
+		ctx := context.Background()
+		targetPath := c.Args().First()
+
+		res, err := graphsplit.CalcCommP(ctx, targetPath)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("PieceCID: %s, PieceSize: %d\n", res.Root, res.Size)
 		return nil
 	},
 }
