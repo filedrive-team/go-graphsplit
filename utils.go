@@ -115,8 +115,11 @@ func buildIpldGraph(ctx context.Context, fileList []Finfo, parentPath, carDir st
 		// log.Info(item.Path)
 		// log.Infof("file name: %s, file size: %d, item size: %d, seek-start:%d, seek-end:%d", item.Name, item.Info.Size(), item.SeekEnd-item.SeekStart, item.SeekStart, item.SeekEnd)
 		dirStr := path.Dir(item.Path)
-
-		if parentPath != "" && strings.HasPrefix(dirStr, parentPath) {
+		parentPath = path.Clean(parentPath)
+		// when parent path equal target path, and the parent path is also a file path
+		if parentPath == path.Clean(item.Path) {
+			dirStr = ""
+		} else if parentPath != "" && strings.HasPrefix(dirStr, parentPath) {
 			dirStr = dirStr[len(parentPath):]
 		}
 
