@@ -1,5 +1,9 @@
 Go-graphsplit
 ==================
+[![](https://img.shields.io/github/go-mod/go-version/filedrive-team/go-graphsplit)]()
+[![](https://goreportcard.com/badge/github.com/filedrive-team/go-graphsplit)](https://goreportcard.com/report/github.com/filedrive-team/go-graphsplit)
+[![](https://img.shields.io/github/license/filedrive-team/go-graphsplit)](https://github.com/filedrive-team/go-graphsplit/blob/main/LICENSE)
+
 > A tool for splitting large dataset into graph slices fit for making deal in the Filecoin Network.
 
 
@@ -15,10 +19,10 @@ git clone https://github.com/filedrive-team/go-graphsplit.git
 
 cd go-graphsplit
 
-// get submodules
+# get submodules
 git submodule update --init --recursive
 
-// build filecoin-ffi
+# build filecoin-ffi
 make ffi
 
 make
