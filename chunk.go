@@ -15,7 +15,7 @@ import (
 var log = logging.Logger("graphsplit")
 
 type GraphBuildCallback interface {
-	OnSuccess(node ipld.Node, graphName string)
+	OnSuccess(node ipld.Node, graphName, fsDetail string)
 	OnError(error)
 }
 
@@ -23,7 +23,7 @@ type commPCallback struct {
 	carDir string
 }
 
-func (cc *commPCallback) OnSuccess(node ipld.Node, graphName string) {
+func (cc *commPCallback) OnSuccess(node ipld.Node, graphName, fsDetail string) {
 	commpStartTime := time.Now()
 	carfilepath := path.Join(cc.carDir, node.Cid().String()+".car")
 	cpRes, err := CalcCommP(context.TODO(), carfilepath)
@@ -47,11 +47,11 @@ func (cc *commPCallback) OnSuccess(node ipld.Node, graphName string) {
 	}
 	defer f.Close()
 	if isCreateAction {
-		if _, err := f.Write([]byte("playload_cid,filename,piece_cid,piece_size\n")); err != nil {
+		if _, err := f.Write([]byte("playload_cid,filename,piece_cid,piece_size,detail\n")); err != nil {
 			log.Fatal(err)
 		}
 	}
-	if _, err := f.Write([]byte(fmt.Sprintf("%s,%s,%s,%d\n", node.Cid(), graphName, cpRes.Root.String(), cpRes.Size))); err != nil {
+	if _, err := f.Write([]byte(fmt.Sprintf("%s,%s,%s,%d,%s\n", node.Cid(), graphName, cpRes.Root.String(), cpRes.Size, fsDetail))); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -64,7 +64,7 @@ type csvCallback struct {
 	carDir string
 }
 
-func (cc *csvCallback) OnSuccess(node ipld.Node, graphName string) {
+func (cc *csvCallback) OnSuccess(node ipld.Node, graphName, fsDetail string) {
 	// Add node inof to manifest.csv
 	manifestPath := path.Join(cc.carDir, "manifest.csv")
 	_, err := os.Stat(manifestPath)
@@ -81,11 +81,11 @@ func (cc *csvCallback) OnSuccess(node ipld.Node, graphName string) {
 	}
 	defer f.Close()
 	if isCreateAction {
-		if _, err := f.Write([]byte("playload_cid,filename\n")); err != nil {
+		if _, err := f.Write([]byte("playload_cid,filename,detail\n")); err != nil {
 			log.Fatal(err)
 		}
 	}
-	if _, err := f.Write([]byte(fmt.Sprintf("%s,%s\n", node.Cid(), graphName))); err != nil {
+	if _, err := f.Write([]byte(fmt.Sprintf("%s,%s,%s\n", node.Cid(), graphName, fsDetail))); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -96,7 +96,7 @@ func (cc *csvCallback) OnError(err error) {
 
 type errCallback struct{}
 
-func (cc *errCallback) OnSuccess(ipld.Node, string) {}
+func (cc *errCallback) OnSuccess(ipld.Node, string, string) {}
 func (cc *errCallback) OnError(err error) {
 	log.Fatal(err)
 }
