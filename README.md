@@ -1,5 +1,9 @@
 Go-graphsplit
 ==================
+[![](https://img.shields.io/github/go-mod/go-version/filedrive-team/go-graphsplit)]()
+[![](https://goreportcard.com/badge/github.com/filedrive-team/go-graphsplit)](https://goreportcard.com/report/github.com/filedrive-team/go-graphsplit)
+[![](https://img.shields.io/github/license/filedrive-team/go-graphsplit)](https://github.com/filedrive-team/go-graphsplit/blob/main/LICENSE)
+
 > A tool for splitting large dataset into graph slices fit for making deal in the Filecoin Network.
 
 
@@ -15,10 +19,10 @@ git clone https://github.com/filedrive-team/go-graphsplit.git
 
 cd go-graphsplit
 
-// get submodules
+# get submodules
 git submodule update --init --recursive
 
-// build filecoin-ffi
+# build filecoin-ffi
 make ffi
 
 make
@@ -45,17 +49,17 @@ Splitting dataset:
 --parent-path=/path/to/dataset \
 /path/to/dataset
 ```
-Notes: A manifest.csv will created to save the mapping with graph slice name and the payload cid. As following:
+Notes: A manifest.csv will created to save the mapping with graph slice name, the payload cid and slice inner structure. As following:
 ```sh
 cat /path/to/car-dir/manifest.csv
-payload_cid,filename
-Qm...,graph-slice-name.car
+payload_cid,filename,detail
+Qm...,graph-slice-name.car,inner-structure-json
 ```
 If set --calc-commp=true, two another fields would be add to manifest.csv
 ```sh
 cat /path/to/car-dir/manifest.csv
-payload_cid,filename,piece_cid,piece_size
-Qm...,graph-slice-name.car,baga...,16646144
+payload_cid,filename,piece_cid,piece_size,detail
+Qm...,graph-slice-name.car,baga...,16646144,inner-structure-json
 ```
 
 Import car file to IPFS: 

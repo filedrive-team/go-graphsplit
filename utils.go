@@ -2,6 +2,7 @@ package graphsplit
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -19,6 +20,7 @@ import (
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	chunker "github.com/ipfs/go-ipfs-chunker"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
+	format "github.com/ipfs/go-ipld-format"
 	"github.com/ipfs/go-merkledag"
 	dag "github.com/ipfs/go-merkledag"
 	"github.com/ipfs/go-unixfs"
@@ -45,23 +47,101 @@ type Finfo struct {
 	SeekEnd   int64
 }
 
+// file system tree node
+type fsNode struct {
+	Name string
+	Hash string
+	Size uint64
+	Link []fsNode
+}
+
+type FSBuilder struct {
+	root *dag.ProtoNode
+	ds   ipld.DAGService
+}
+
+func NewFSBuilder(root *dag.ProtoNode, ds ipld.DAGService) *FSBuilder {
+	return &FSBuilder{root, ds}
+}
+
+func (b *FSBuilder) Build() (*fsNode, error) {
+	fsn, err := unixfs.FSNodeFromBytes(b.root.Data())
+	if err != nil {
+		return nil, xerrors.Errorf("input dag is not a unixfs node: %s", err)
+	}
+
+	rootn := &fsNode{
+		Hash: b.root.Cid().String(),
+		Size: fsn.FileSize(),
+		Link: []fsNode{},
+	}
+	if !fsn.IsDir() {
+		return rootn, nil
+	}
+	for _, ln := range b.root.Links() {
+		fn, err := b.getNodeByLink(ln)
+		if err != nil {
+			return nil, err
+		}
+		rootn.Link = append(rootn.Link, fn)
+	}
+
+	return rootn, nil
+}
+
+func (b *FSBuilder) getNodeByLink(ln *format.Link) (fn fsNode, err error) {
+	ctx := context.Background()
+	fn = fsNode{
+		Name: ln.Name,
+		Hash: ln.Cid.String(),
+		Size: ln.Size,
+	}
+	nd, err := b.ds.Get(ctx, ln.Cid)
+	if err != nil {
+		log.Warn(err)
+		return
+	}
+
+	nnd, ok := nd.(*dag.ProtoNode)
+	if !ok {
+		err = xerrors.Errorf("failed to transformed to dag.ProtoNode")
+		return
+	}
+	fsn, err := unixfs.FSNodeFromBytes(nnd.Data())
+	if err != nil {
+		log.Warnf("input dag is not a unixfs node: %s", err)
+		return
+	}
+	if !fsn.IsDir() {
+		return
+	}
+	for _, ln := range nnd.Links() {
+		node, err := b.getNodeByLink(ln)
+		if err != nil {
+			return node, err
+		}
+		fn.Link = append(fn.Link, node)
+	}
+	return
+}
+
 func BuildIpldGraph(ctx context.Context, fileList []Finfo, graphName, parentPath, carDir string, parallel int, cb GraphBuildCallback) {
-	node, err := buildIpldGraph(ctx, fileList, parentPath, carDir, parallel)
+	node, fsDetail, err := buildIpldGraph(ctx, fileList, parentPath, carDir, parallel)
 	if err != nil {
 		//log.Fatal(err)
 		cb.OnError(err)
 		return
 	}
-	cb.OnSuccess(node, graphName)
+	cb.OnSuccess(node, graphName, fsDetail)
 }
 
-func buildIpldGraph(ctx context.Context, fileList []Finfo, parentPath, carDir string, parallel int) (ipld.Node, error) {
+func buildIpldGraph(ctx context.Context, fileList []Finfo, parentPath, carDir string, parallel int) (ipld.Node, string, error) {
 	bs2 := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 	dagServ := merkledag.NewDAGService(blockservice.New(bs2, offline.Exchange(bs2)))
 
 	cidBuilder, err := merkledag.PrefixForCidVersion(0)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	fileNodeMap := make(map[string]*dag.ProtoNode)
 	dirNodeMap := make(map[string]*dag.ProtoNode)
@@ -115,8 +195,11 @@ func buildIpldGraph(ctx context.Context, fileList []Finfo, parentPath, carDir st
 		// log.Info(item.Path)
 		// log.Infof("file name: %s, file size: %d, item size: %d, seek-start:%d, seek-end:%d", item.Name, item.Info.Size(), item.SeekEnd-item.SeekStart, item.SeekStart, item.SeekEnd)
 		dirStr := path.Dir(item.Path)
-
-		if parentPath != "" && strings.HasPrefix(dirStr, parentPath) {
+		parentPath = path.Clean(parentPath)
+		// when parent path equal target path, and the parent path is also a file path
+		if parentPath == path.Clean(item.Path) {
+			dirStr = ""
+		} else if parentPath != "" && strings.HasPrefix(dirStr, parentPath) {
 			dirStr = dirStr[len(parentPath):]
 		}
 
@@ -175,7 +258,7 @@ func buildIpldGraph(ctx context.Context, fileList []Finfo, parentPath, carDir st
 			if isLinked(parentNode, dir) {
 				parentNode, err = parentNode.UpdateNodeLink(dir, dirNode)
 				if err != nil {
-					return nil, err
+					return nil, "", err
 				}
 				dirNodeMap[parentKey] = parentNode
 			} else {
@@ -197,7 +280,7 @@ func buildIpldGraph(ctx context.Context, fileList []Finfo, parentPath, carDir st
 	//car
 	carF, err := os.Create(path.Join(carDir, rootNode.Cid().String()+".car"))
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	defer carF.Close()
 	selector := allSelector()
@@ -206,13 +289,22 @@ func buildIpldGraph(ctx context.Context, fileList []Finfo, parentPath, carDir st
 	// cario := cario.NewCarIO()
 	// err = cario.WriteCar(context.Background(), bs2, rootNode.Cid(), selector, carF)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	log.Infof("generate car file completed, time elapsed: %s", time.Now().Sub(genCarStartTime))
 
+	fsBuilder := NewFSBuilder(rootNode, dagServ)
+	fsNode, err := fsBuilder.Build()
+	if err != nil {
+		return nil, "", err
+	}
+	fsNodeBytes, err := json.Marshal(fsNode)
+	if err != nil {
+		return nil, "", err
+	}
 	//log.Info(dirNodeMap)
 	fmt.Println("++++++++++++ finished to build ipld +++++++++++++")
-	return rootNode, nil
+	return rootNode, fmt.Sprintf("%s", fsNodeBytes), nil
 }
 
 func allSelector() ipldprime.Node {

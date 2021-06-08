@@ -79,6 +79,9 @@ var chunkCmd = &cli.Command{
 		sliceSize := c.Uint64("slice-size")
 		parentPath := c.String("parent-path")
 		carDir := c.String("car-dir")
+		if !graphsplit.ExistDir(carDir) {
+			return xerrors.Errorf("Unexpected! The path of car-dir does not exist")
+		}
 		graphName := c.String("graph-name")
 		if sliceSize == 0 {
 			return xerrors.Errorf("Unexpected! Slice size has been set as 0")
