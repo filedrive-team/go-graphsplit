@@ -7,11 +7,14 @@ Go-graphsplit
 > A tool for splitting large dataset into graph slices fit for making deal in the Filecoin Network.
 
 
-When storing a large dataset in the Filecoin Network, we have to split it into smaller pieces to fit for the size of sector, which could be 32GiB or 64GiB.
+When storing large dataset, we need to split it into smaller pieces to fit for the size of sector, which could be generally 32GiB or 64GiB.
 
-At first, we made the dataset into a large tar ball, did chunking this tar ball into small pieces, and then make deals with storage miners with these pieces. We did this way for a while until we realized that it brought a difficulty for data retrieval. Even if we only needed to retrieve a small file in the dataset, we had to retrieve all the pieces of the tar ball at first. 
+If we make these data into a large tar ball, chunk this tar ball into small pieces, and then, make storage deals with miners with these pieces, on the side of storage, it will be quite efficiency and allow to store hundreds of TiB data in a month. However, this way will also bring difficulties for data retrieval. Even if we only needed to retrieve a small file, we would have to retrieve and download all the pieces of this tar ball first, decompress it and find the specific file we needed.
 
-Graphsplit has solved the problem we faced above. It takes advantage of IPLD concepts, following the [unixfs](https://github.com/ipfs/go-unixfs) format datastructures. It regards the dataset or it's sub-directory as a big graph and then cut it into small graphs. Each small graph will keep its file system structure as possible as its used be. After that, we only need to organize these small graphs into a car file according to [unixfs](https://github.com/ipfs/go-unixfs).
+Graphsplit can solve this problem. It takes advantage of IPLD protocol, following the [Unixfs](https://github.com/ipfs/go-unixfs) format data structures. It regards the dataset or it's sub-directory as a big graph and then cut it into small graphs. Each small graph will keep its file system structure as possible as it used to be. After that, we only need to organize these small graphs into a car file. If one data piece have a complete file and we need to retrieval this file, we only need to use payload CID to retrieval this data piece through lotus client, fetch it back and get the file. Besides, a manifest.csv will be created to save the mapping with graph slice name, payload CID, Piece CID and the inner file structure. 
+
+Another advantage of Graphsplit is it can perfectly match IPFS. Like if you build an IPFS website as your Deal UI website, the inner file structure of each data piece can be shown on it, and it is easier for users to retrieval and download data they stored.
+
 
 ## Build
 ```sh
