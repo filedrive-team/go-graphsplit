@@ -23,6 +23,7 @@ import (
 	"golang.org/x/xerrors"
 )
 
+// import car files, deserialize to get IPLD structure and require Root CID
 func Import(path string, st car.Store) (cid.Cid, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -52,6 +53,8 @@ func Import(path string, st car.Store) (cid.Cid, error) {
 	return result.Roots[0], nil
 }
 
+// according to the type(link, file, directory), write unixfs nodes into disks.
+//If it is directory, then get the child nodes and recursive call
 func NodeWriteTo(nd files.Node, fpath string) error {
 	switch nd := nd.(type) {
 	case *files.Symlink:
@@ -96,6 +99,7 @@ func ExistDir(path string) bool {
 	return s.IsDir()
 }
 
+// deserialize car files, change to unixfs structure, and write into outputDir directory
 func CarTo(carPath, outputDir string, parallel int) {
 	ctx := context.Background()
 	bs2 := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
@@ -168,6 +172,7 @@ func CarTo(carPath, outputDir string, parallel int) {
 	wg.Wait()
 }
 
+// according to the rules, merge slices into the original file
 func Merge(dir string, parallel int) {
 	wg := sync.WaitGroup{}
 	limitCh := make(chan struct{}, parallel)
