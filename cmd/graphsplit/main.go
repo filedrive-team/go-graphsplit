@@ -159,7 +159,13 @@ var commpCmd = &cli.Command{
 var importDatasetCmd = &cli.Command{
 	Name:  "import-dataset",
 	Usage: "import files from the specified dataset",
-	Flags: []cli.Flag{},
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "dsmongo",
+			Required: true,
+			Usage:    "specify the mongodb connection",
+		},
+	},
 	Action: func(c *cli.Context) error {
 		ctx := context.Background()
 
@@ -168,6 +174,6 @@ var importDatasetCmd = &cli.Command{
 			return xerrors.Errorf("Unexpected! The path to dataset does not exist")
 		}
 
-		return dataset.Import(ctx, targetPath)
+		return dataset.Import(ctx, targetPath, c.String("dsmongo"))
 	},
 }

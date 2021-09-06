@@ -44,7 +44,7 @@ func CalcCommP(ctx context.Context, inpath string) (*CommPRet, error) {
 	}
 
 	// check that the data is a car file; if it's not, retrieval won't work
-	_, _, err = car.ReadHeader(bufio.NewReader(rdr))
+	_, err = car.ReadHeader(bufio.NewReader(rdr))
 	if err != nil {
 		return nil, xerrors.Errorf("not a car file: %w", err)
 	}
