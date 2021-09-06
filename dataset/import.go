@@ -3,6 +3,7 @@ package dataset
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
@@ -14,8 +15,11 @@ import (
 	dss "github.com/ipfs/go-datastore/sync"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipfs/go-merkledag"
 )
+
+var log = logging.Logger("graphsplit/dataset")
 
 func Import(ctx context.Context, target, mongouri string) error {
 	recordPath := path.Join(target, record_json)
@@ -45,20 +49,29 @@ func Import(ctx context.Context, target, mongouri string) error {
 	}
 
 	// read files
-
+	allfiles, err := graphsplit.GetFileList([]string{target})
+	if err != nil {
+		return err
+	}
+	totol_files := len(allfiles)
+	var ferr error
 	files := graphsplit.GetFileListAsync([]string{target})
 	for item := range files {
 		// ignore record_json
 		if item.Name == record_json {
+			totol_files -= 1
 			continue
 		}
+
 		// ignore file which has been imported
 		if _, ok := records[item.Path]; ok {
 			continue
 		}
+		log.Infof("import file: %s", item.Path)
 		fileNode, err := graphsplit.BuildFileNode(item, dagServ, cidBuilder)
 		if err != nil {
-			return err
+			ferr = err
+			break
 		}
 		records[item.Path] = &MetaData{
 			Path: item.Path,
@@ -68,10 +81,12 @@ func Import(ctx context.Context, target, mongouri string) error {
 		}
 		err = saveRecords(records, recordPath)
 		if err != nil {
-			return err
+			ferr = err
+			break
 		}
 	}
-	return nil
+	fmt.Printf("total %d files, imported %d files, %.2f %%\n", len(allfiles), len(records), float64(len(records))/float64(totol_files)*100)
+	return ferr
 }
 
 func readRecords(path string) (map[string]*MetaData, error) {
