@@ -161,19 +161,27 @@ var importDatasetCmd = &cli.Command{
 	Usage: "import files from the specified dataset",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:     "dsmongo",
-			Required: true,
-			Usage:    "specify the mongodb connection",
+			Name:  "dsmongo",
+			Usage: "specify the mongodb connection",
+		},
+		&cli.StringFlag{
+			Name:  "dscluster-cfg",
+			Usage: "specify the dscluster config path",
 		},
 	},
 	Action: func(c *cli.Context) error {
 		ctx := context.Background()
+		dsmongo := c.String("dsmongo")
+		dscluster := c.String("dscluster-cfg")
+		if dscluster == "" && dsmongo == "" {
+			return xerrors.Errorf("Unexpected! Need monogdb connection or dscluster config")
+		}
 
 		targetPath := c.Args().First()
 		if !graphsplit.ExistDir(targetPath) {
 			return xerrors.Errorf("Unexpected! The path to dataset does not exist")
 		}
 
-		return dataset.Import(ctx, targetPath, c.String("dsmongo"))
+		return dataset.Import(ctx, targetPath, dsmongo, dscluster)
 	},
 }

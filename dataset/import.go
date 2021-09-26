@@ -10,8 +10,11 @@ import (
 
 	dsrpc "github.com/beeleelee/go-ds-rpc"
 	dsmongo "github.com/beeleelee/go-ds-rpc/ds-mongo"
+	"github.com/filedrive-team/go-ds-cluster/clusterclient"
+	clustercfg "github.com/filedrive-team/go-ds-cluster/config"
 	"github.com/filedrive-team/go-graphsplit"
 	"github.com/ipfs/go-blockservice"
+	ds "github.com/ipfs/go-datastore"
 	dss "github.com/ipfs/go-datastore/sync"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
@@ -21,22 +24,34 @@ import (
 
 var log = logging.Logger("graphsplit/dataset")
 
-func Import(ctx context.Context, target, mongouri string) error {
+func Import(ctx context.Context, target, mongouri, dsclusterCfg string) error {
 	recordPath := path.Join(target, record_json)
 	// check if record.json has data
 	records, err := readRecords(recordPath)
 	if err != nil {
 		return err
 	}
+	var ds ds.Datastore
 
-	// go-ds-rpc dsmongo
-	client, err := dsmongo.NewMongoStoreClient(mongouri)
-	if err != nil {
-		return err
-	}
-	ds, err := dsrpc.NewDataStore(client)
-	if err != nil {
-		return err
+	if dsclusterCfg != "" {
+		cfg, err := clustercfg.ReadConfig(dsclusterCfg)
+		if err != nil {
+			return err
+		}
+		ds, err = clusterclient.NewClusterClient(context.Background(), cfg)
+		if err != nil {
+			return err
+		}
+	} else {
+		// go-ds-rpc dsmongo
+		client, err := dsmongo.NewMongoStoreClient(mongouri)
+		if err != nil {
+			return err
+		}
+		ds, err = dsrpc.NewDataStore(client)
+		if err != nil {
+			return err
+		}
 	}
 
 	bs2 := bstore.NewBlockstore(dss.MutexWrap(ds))
