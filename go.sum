@@ -202,8 +202,6 @@ github.com/filecoin-project/specs-actors v0.9.4/go.mod h1:BStZQzx5x7TmCkLv0Bpa07
 github.com/filecoin-project/specs-actors v0.9.12 h1:iIvk58tuMtmloFNHhAOQHG+4Gci6Lui0n7DYQGi3cJk=
 github.com/filecoin-project/specs-actors v0.9.12/go.mod h1:TS1AW/7LbG+615j4NsjMK1qlpAwaFsG9w0V2tg2gSao=
 github.com/filecoin-project/specs-actors/v2 v2.0.1/go.mod h1:v2NZVYinNIKA9acEMBm5wWXxqv5+frFEbekBFemYghY=
-github.com/filedrive-team/go-ds-cluster v0.0.1 h1:p4VezxMLOPrCCMTN+Tpa6P55sFfesYyx7dgCuQZyYgk=
-github.com/filedrive-team/go-ds-cluster v0.0.1/go.mod h1:YT9FcORCaA7tAInFWIzebsIIvL+JYeVdREyMUloatkg=
 github.com/filedrive-team/go-ds-cluster v0.0.2-0.20210926002051-6e73e0f679f0 h1:ZnWp67z3UyOFndZS4VsFhE+hgReYf6Mx2C6MtBZ4+2E=
 github.com/filedrive-team/go-ds-cluster v0.0.2-0.20210926002051-6e73e0f679f0/go.mod h1:YT9FcORCaA7tAInFWIzebsIIvL+JYeVdREyMUloatkg=
 github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568/go.mod h1:xEzjJPgXI435gkrCt3MPfRiAkVrwSbHsst4LCFVfpJc=

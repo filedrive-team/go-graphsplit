@@ -15,6 +15,7 @@ import (
 	"github.com/filedrive-team/go-graphsplit"
 	"github.com/ipfs/go-blockservice"
 	ds "github.com/ipfs/go-datastore"
+	dsmount "github.com/ipfs/go-datastore/mount"
 	dss "github.com/ipfs/go-datastore/sync"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
@@ -53,6 +54,13 @@ func Import(ctx context.Context, target, mongouri, dsclusterCfg string) error {
 			return err
 		}
 	}
+
+	ds = dsmount.New([]dsmount.Mount{
+		{
+			Prefix:    bstore.BlockPrefix,
+			Datastore: ds,
+		},
+	})
 
 	bs2 := bstore.NewBlockstore(dss.MutexWrap(ds))
 	dagServ := merkledag.NewDAGService(blockservice.New(bs2, offline.Exchange(bs2)))
