@@ -108,7 +108,7 @@ func Import(ctx context.Context, target, mongouri, dsclusterCfg string) error {
 			break
 		}
 	}
-	fmt.Printf("total %d files, imported %d files, %.2f %%\n", len(allfiles), len(records), float64(len(records))/float64(totol_files)*100)
+	fmt.Printf("total %d files, imported %d files, %.2f %%\n", totol_files, len(records), float64(len(records))/float64(totol_files)*100)
 	return ferr
 }
 
