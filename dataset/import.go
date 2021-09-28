@@ -95,7 +95,7 @@ func Import(ctx context.Context, target, mongouri, dsclusterCfg string) error {
 			continue
 		}
 
-		fileNode, err := buildFileNodeRetry(3, item, dagServ, cidBuilder)
+		fileNode, err := buildFileNodeRetry(5, item, dagServ, cidBuilder)
 		if err != nil {
 			ferr = err
 			break
@@ -123,8 +123,8 @@ func buildFileNodeRetry(times int, item graphsplit.Finfo, dagServ ipld.DAGServic
 		}
 		// should wait a second if io.EOF
 		if err == io.EOF {
-			log.Infof("io.EOF wait %d ms", 500)
-			time.Sleep(time.Millisecond * 500)
+			log.Infof("io.EOF wait %d ms", 800)
+			time.Sleep(time.Millisecond * 800)
 		}
 	}
 	return
