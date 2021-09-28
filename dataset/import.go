@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path"
+	"time"
 
 	dsrpc "github.com/beeleelee/go-ds-rpc"
 	dsmongo "github.com/beeleelee/go-ds-rpc/ds-mongo"
@@ -118,6 +120,11 @@ func buildFileNodeRetry(times int, item graphsplit.Finfo, dagServ ipld.DAGServic
 		log.Infof("import file: %s, try times: %d", item.Path, i)
 		if root, err = graphsplit.BuildFileNode(item, dagServ, cidBuilder); err == nil {
 			return root, nil
+		}
+		// should wait a second if io.EOF
+		if err == io.EOF {
+			log.Infof("io.EOF wait %d ms", 500)
+			time.Sleep(time.Millisecond * 500)
 		}
 	}
 	return
