@@ -206,6 +206,8 @@ github.com/filedrive-team/go-ds-cluster v0.0.0-20210927044815-4d20686407df h1:KE
 github.com/filedrive-team/go-ds-cluster v0.0.0-20210927044815-4d20686407df/go.mod h1:YT9FcORCaA7tAInFWIzebsIIvL+JYeVdREyMUloatkg=
 github.com/filedrive-team/go-ds-cluster v0.0.2-0.20210926002051-6e73e0f679f0 h1:ZnWp67z3UyOFndZS4VsFhE+hgReYf6Mx2C6MtBZ4+2E=
 github.com/filedrive-team/go-ds-cluster v0.0.2-0.20210926002051-6e73e0f679f0/go.mod h1:YT9FcORCaA7tAInFWIzebsIIvL+JYeVdREyMUloatkg=
+github.com/filedrive-team/go-ds-cluster v0.0.2-0.20210927234108-db8093651653 h1:gECA3vDcjLQ9LWlLvpAtNB15A4vvIw7shDDG346xehE=
+github.com/filedrive-team/go-ds-cluster v0.0.2-0.20210927234108-db8093651653/go.mod h1:YT9FcORCaA7tAInFWIzebsIIvL+JYeVdREyMUloatkg=
 github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568/go.mod h1:xEzjJPgXI435gkrCt3MPfRiAkVrwSbHsst4LCFVfpJc=
 github.com/flynn/noise v0.0.0-20180327030543-2492fe189ae6/go.mod h1:1i71OnUq3iUe1ma7Lr6yG6/rjvM3emb6yoL7xLFzcVQ=
 github.com/flynn/noise v1.0.0 h1:DlTHqmzmvcEiKj+4RYo/imoswx/4r6iBlCMfVtrMXpQ=

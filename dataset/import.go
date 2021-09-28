@@ -14,11 +14,13 @@ import (
 	clustercfg "github.com/filedrive-team/go-ds-cluster/config"
 	"github.com/filedrive-team/go-graphsplit"
 	"github.com/ipfs/go-blockservice"
+	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	dsmount "github.com/ipfs/go-datastore/mount"
 	dss "github.com/ipfs/go-datastore/sync"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
+	ipld "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipfs/go-merkledag"
 )
@@ -90,8 +92,8 @@ func Import(ctx context.Context, target, mongouri, dsclusterCfg string) error {
 		if _, ok := records[item.Path]; ok {
 			continue
 		}
-		log.Infof("import file: %s", item.Path)
-		fileNode, err := graphsplit.BuildFileNode(item, dagServ, cidBuilder)
+
+		fileNode, err := buildFileNodeRetry(3, item, dagServ, cidBuilder)
 		if err != nil {
 			ferr = err
 			break
@@ -102,14 +104,23 @@ func Import(ctx context.Context, target, mongouri, dsclusterCfg string) error {
 			Size: item.Info.Size(),
 			CID:  fileNode.Cid().String(),
 		}
-		err = saveRecords(records, recordPath)
-		if err != nil {
-			ferr = err
-			break
-		}
+	}
+	err = saveRecords(records, recordPath)
+	if err != nil {
+		ferr = err
 	}
 	fmt.Printf("total %d files, imported %d files, %.2f %%\n", totol_files, len(records), float64(len(records))/float64(totol_files)*100)
 	return ferr
+}
+
+func buildFileNodeRetry(times int, item graphsplit.Finfo, dagServ ipld.DAGService, cidBuilder cid.Builder) (root ipld.Node, err error) {
+	for i := 0; i < times; i++ {
+		log.Infof("import file: %s, try times: %d", item.Path, i)
+		if root, err = graphsplit.BuildFileNode(item, dagServ, cidBuilder); err == nil {
+			return root, nil
+		}
+	}
+	return
 }
 
 func readRecords(path string) (map[string]*MetaData, error) {
