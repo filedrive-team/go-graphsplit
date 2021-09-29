@@ -29,7 +29,7 @@ import (
 
 var log = logging.Logger("graphsplit/dataset")
 
-func Import(ctx context.Context, target, mongouri, dsclusterCfg string) error {
+func Import(ctx context.Context, target, mongouri, dsclusterCfg string, retry int, retryWait int) error {
 	recordPath := path.Join(target, record_json)
 	// check if record.json has data
 	records, err := readRecords(recordPath)
@@ -95,7 +95,7 @@ func Import(ctx context.Context, target, mongouri, dsclusterCfg string) error {
 			continue
 		}
 
-		fileNode, err := buildFileNodeRetry(5, item, dagServ, cidBuilder)
+		fileNode, err := buildFileNodeRetry(retry, retryWait, item, dagServ, cidBuilder)
 		if err != nil {
 			ferr = err
 			break
@@ -106,25 +106,25 @@ func Import(ctx context.Context, target, mongouri, dsclusterCfg string) error {
 			Size: item.Info.Size(),
 			CID:  fileNode.Cid().String(),
 		}
+		fmt.Printf("total %d files, imported %d files, %.2f %%\n", totol_files, len(records), float64(len(records))/float64(totol_files)*100)
 	}
 	err = saveRecords(records, recordPath)
 	if err != nil {
 		ferr = err
 	}
-	fmt.Printf("total %d files, imported %d files, %.2f %%\n", totol_files, len(records), float64(len(records))/float64(totol_files)*100)
 	return ferr
 }
 
-func buildFileNodeRetry(times int, item graphsplit.Finfo, dagServ ipld.DAGService, cidBuilder cid.Builder) (root ipld.Node, err error) {
-	for i := 0; i < times; i++ {
+func buildFileNodeRetry(times, waitTime int, item graphsplit.Finfo, dagServ ipld.DAGService, cidBuilder cid.Builder) (root ipld.Node, err error) {
+	for i := 0; i <= times; i++ {
 		log.Infof("import file: %s, try times: %d", item.Path, i)
 		if root, err = graphsplit.BuildFileNode(item, dagServ, cidBuilder); err == nil {
 			return root, nil
 		}
 		// should wait a second if io.EOF
 		if err == io.EOF {
-			log.Infof("io.EOF wait %d ms", 800)
-			time.Sleep(time.Millisecond * 800)
+			log.Infof("io.EOF wait %d seconds", waitTime)
+			time.Sleep(time.Duration(waitTime * 1e9))
 		}
 	}
 	return

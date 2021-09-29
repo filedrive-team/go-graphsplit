@@ -168,6 +168,16 @@ var importDatasetCmd = &cli.Command{
 			Name:  "dscluster-cfg",
 			Usage: "specify the dscluster config path",
 		},
+		&cli.IntFlag{
+			Name:  "retry",
+			Value: 5,
+			Usage: "retry write file to datastore",
+		},
+		&cli.IntFlag{
+			Name:  "retry-wait",
+			Value: 1,
+			Usage: "sleep time before a retry",
+		},
 	},
 	Action: func(c *cli.Context) error {
 		ctx := context.Background()
@@ -182,6 +192,6 @@ var importDatasetCmd = &cli.Command{
 			return xerrors.Errorf("Unexpected! The path to dataset does not exist")
 		}
 
-		return dataset.Import(ctx, targetPath, dsmongo, dscluster)
+		return dataset.Import(ctx, targetPath, dsmongo, dscluster, c.Int("retry"), c.Int("retry-wait"))
 	},
 }
