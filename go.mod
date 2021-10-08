@@ -7,6 +7,7 @@ require (
 	github.com/filecoin-project/go-commp-utils v0.1.0
 	github.com/filecoin-project/go-padreader v0.0.0-20201016201355-9c5eb1faedb5
 	github.com/filecoin-project/go-state-types v0.1.0
+	github.com/filedrive-team/filehelper v0.0.3-0.20211008080257-9a80d0b35c0b
 	github.com/filedrive-team/go-ds-cluster v0.0.3-0.20211001053044-5be51e7b1626
 	github.com/ipfs/go-blockservice v0.1.7
 	github.com/ipfs/go-cid v0.1.0

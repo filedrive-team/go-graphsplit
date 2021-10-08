@@ -12,9 +12,9 @@ import (
 
 	dsrpc "github.com/beeleelee/go-ds-rpc"
 	dsmongo "github.com/beeleelee/go-ds-rpc/ds-mongo"
+	"github.com/filedrive-team/filehelper"
 	"github.com/filedrive-team/go-ds-cluster/clusterclient"
 	clustercfg "github.com/filedrive-team/go-ds-cluster/config"
-	"github.com/filedrive-team/go-graphsplit"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
@@ -76,13 +76,13 @@ func Import(ctx context.Context, target, mongouri, dsclusterCfg string, retry in
 	}
 
 	// read files
-	allfiles, err := graphsplit.GetFileList([]string{target})
+	allfiles, err := filehelper.FileWalkSync([]string{target})
 	if err != nil {
 		return err
 	}
 	totol_files := len(allfiles)
 	var ferr error
-	files := graphsplit.GetFileListAsync([]string{target})
+	files := filehelper.FileWalkAsync([]string{target})
 	for item := range files {
 		// ignore record_json
 		if item.Name == record_json {
@@ -115,10 +115,10 @@ func Import(ctx context.Context, target, mongouri, dsclusterCfg string, retry in
 	return ferr
 }
 
-func buildFileNodeRetry(times, waitTime int, item graphsplit.Finfo, dagServ ipld.DAGService, cidBuilder cid.Builder) (root ipld.Node, err error) {
+func buildFileNodeRetry(times, waitTime int, item filehelper.Finfo, dagServ ipld.DAGService, cidBuilder cid.Builder) (root ipld.Node, err error) {
 	for i := 0; i <= times; i++ {
 		log.Infof("import file: %s, try times: %d", item.Path, i)
-		if root, err = graphsplit.BuildFileNode(item, dagServ, cidBuilder); err == nil {
+		if root, err = filehelper.BuildFileNode(item, dagServ, cidBuilder); err == nil {
 			return root, nil
 		}
 		// should wait a second if io.EOF

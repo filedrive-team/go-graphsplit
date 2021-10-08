@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"runtime"
@@ -13,19 +11,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filedrive-team/filehelper"
 	"github.com/ipfs/go-blockservice"
-	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	dss "github.com/ipfs/go-datastore/sync"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
-	chunker "github.com/ipfs/go-ipfs-chunker"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
-	format "github.com/ipfs/go-ipld-format"
-	"github.com/ipfs/go-merkledag"
 	dag "github.com/ipfs/go-merkledag"
 	"github.com/ipfs/go-unixfs"
-	"github.com/ipfs/go-unixfs/importer/balanced"
-	ihelper "github.com/ipfs/go-unixfs/importer/helpers"
 	"golang.org/x/xerrors"
 
 	ipld "github.com/ipfs/go-ipld-format"
@@ -35,17 +28,6 @@ import (
 	"github.com/ipld/go-ipld-prime/traversal/selector"
 	"github.com/ipld/go-ipld-prime/traversal/selector/builder"
 )
-
-const UnixfsLinksPerLevel = 1 << 10
-const UnixfsChunkSize uint64 = 1 << 20
-
-type Finfo struct {
-	Path      string
-	Name      string
-	Info      os.FileInfo
-	SeekStart int64
-	SeekEnd   int64
-}
 
 // file system tree node
 type fsNode struct {
@@ -89,7 +71,7 @@ func (b *FSBuilder) Build() (*fsNode, error) {
 	return rootn, nil
 }
 
-func (b *FSBuilder) getNodeByLink(ln *format.Link) (fn fsNode, err error) {
+func (b *FSBuilder) getNodeByLink(ln *ipld.Link) (fn fsNode, err error) {
 	ctx := context.Background()
 	fn = fsNode{
 		Name: ln.Name,
@@ -125,7 +107,7 @@ func (b *FSBuilder) getNodeByLink(ln *format.Link) (fn fsNode, err error) {
 	return
 }
 
-func BuildIpldGraph(ctx context.Context, fileList []Finfo, graphName, parentPath, carDir string, parallel int, cb GraphBuildCallback) {
+func BuildIpldGraph(ctx context.Context, fileList []filehelper.Finfo, graphName, parentPath, carDir string, parallel int, cb GraphBuildCallback) {
 	node, fsDetail, err := buildIpldGraph(ctx, fileList, parentPath, carDir, parallel)
 	if err != nil {
 		//log.Fatal(err)
@@ -135,11 +117,11 @@ func BuildIpldGraph(ctx context.Context, fileList []Finfo, graphName, parentPath
 	cb.OnSuccess(node, graphName, fsDetail)
 }
 
-func buildIpldGraph(ctx context.Context, fileList []Finfo, parentPath, carDir string, parallel int) (ipld.Node, string, error) {
+func buildIpldGraph(ctx context.Context, fileList []filehelper.Finfo, parentPath, carDir string, parallel int) (ipld.Node, string, error) {
 	bs2 := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
-	dagServ := merkledag.NewDAGService(blockservice.New(bs2, offline.Exchange(bs2)))
+	dagServ := dag.NewDAGService(blockservice.New(bs2, offline.Exchange(bs2)))
 
-	cidBuilder, err := merkledag.PrefixForCidVersion(0)
+	cidBuilder, err := dag.PrefixForCidVersion(0)
 	if err != nil {
 		return nil, "", err
 	}
@@ -164,13 +146,13 @@ func buildIpldGraph(ctx context.Context, fileList []Finfo, parentPath, carDir st
 	lock := sync.Mutex{}
 	for i, item := range fileList {
 		wg.Add(1)
-		go func(i int, item Finfo) {
+		go func(i int, item filehelper.Finfo) {
 			defer func() {
 				<-pchan
 				wg.Done()
 			}()
 			pchan <- struct{}{}
-			fileNode, err := BuildFileNode(item, dagServ, cidBuilder)
+			fileNode, err := filehelper.BuildFileNode(item, dagServ, cidBuilder)
 			if err != nil {
 				log.Warn(err)
 				return
@@ -304,7 +286,7 @@ func buildIpldGraph(ctx context.Context, fileList []Finfo, parentPath, carDir st
 	}
 	//log.Info(dirNodeMap)
 	fmt.Println("++++++++++++ finished to build ipld +++++++++++++")
-	return rootNode, fmt.Sprintf("%s", fsNodeBytes), nil
+	return rootNode, string(fsNodeBytes), nil
 }
 
 func allSelector() ipldprime.Node {
@@ -333,92 +315,6 @@ func isLinked(node *dag.ProtoNode, name string) bool {
 	return false
 }
 
-type fileSlice struct {
-	r        *os.File
-	offset   int64
-	start    int64
-	end      int64
-	fileSize int64
-}
-
-func (fs *fileSlice) Read(p []byte) (n int, err error) {
-	if fs.end == 0 {
-		fs.end = fs.fileSize - 1
-	}
-	if fs.offset == 0 && fs.start > 0 {
-		_, err = fs.r.Seek(fs.start, 0)
-		if err != nil {
-			log.Warn(err)
-			return 0, err
-		}
-		fs.offset = fs.start
-	}
-	//fmt.Printf("offset: %d, end: %d, start: %d, size: %d\n", fs.offset, fs.end, fs.start, fs.fileSize)
-	if fs.end-fs.offset+1 == 0 {
-		return 0, io.EOF
-	}
-	if fs.end-fs.offset+1 < 0 {
-		return 0, xerrors.Errorf("read data out bound of the slice")
-	}
-	plen := len(p)
-	leftLen := fs.end - fs.offset + 1
-	if leftLen > int64(plen) {
-		n, err = fs.r.Read(p)
-		if err != nil {
-			log.Warn(err)
-			return
-		}
-		//fmt.Printf("read num: %d\n", n)
-		fs.offset += int64(n)
-		return
-	}
-	b := make([]byte, leftLen)
-	n, err = fs.r.Read(b)
-	if err != nil {
-		return
-	}
-	//fmt.Printf("read num: %d\n", n)
-	fs.offset += int64(n)
-
-	return copy(p, b), io.EOF
-}
-
-func BuildFileNode(item Finfo, bufDs ipld.DAGService, cidBuilder cid.Builder) (node ipld.Node, err error) {
-	var r io.Reader
-	f, err := os.Open(item.Path)
-	if err != nil {
-		return nil, err
-	}
-	r = f
-
-	// read all data of item
-	if item.SeekStart > 0 || item.SeekEnd > 0 {
-		r = &fileSlice{
-			r:        f,
-			start:    item.SeekStart,
-			end:      item.SeekEnd,
-			fileSize: item.Info.Size(),
-		}
-	}
-
-	params := ihelper.DagBuilderParams{
-		Maxlinks:   UnixfsLinksPerLevel,
-		RawLeaves:  false,
-		CidBuilder: cidBuilder,
-		Dagserv:    bufDs,
-		NoCopy:     false,
-	}
-	db, err := params.New(chunker.NewSizeSplitter(r, int64(UnixfsChunkSize)))
-	if err != nil {
-		return nil, err
-	}
-	node, err = balanced.Layout(db)
-	if err != nil {
-		return nil, err
-	}
-	return
-}
-
 func GenGraphName(graphName string, sliceCount, sliceTotal int) string {
 	if sliceTotal == 1 {
 		return fmt.Sprintf("%s.car", graphName)
@@ -427,7 +323,7 @@ func GenGraphName(graphName string, sliceCount, sliceTotal int) string {
 }
 
 func GetGraphCount(args []string, sliceSize int64) int {
-	list, err := GetFileList(args)
+	list, err := filehelper.FileWalkSync(args)
 	if err != nil {
 		panic(err)
 	}
@@ -444,85 +340,6 @@ func GetGraphCount(args []string, sliceSize int64) int {
 	}
 	count := (totalSize / sliceSize) + 1
 	return int(count)
-}
-
-func GetFileListAsync(args []string) chan Finfo {
-	fichan := make(chan Finfo, 0)
-	go func() {
-		defer close(fichan)
-		for _, path := range args {
-			finfo, err := os.Stat(path)
-			if err != nil {
-				log.Warn(err)
-				return
-			}
-			// 忽略隐藏目录
-			if strings.HasPrefix(finfo.Name(), ".") {
-				continue
-			}
-			if finfo.IsDir() {
-				files, err := ioutil.ReadDir(path)
-				if err != nil {
-					log.Warn(err)
-					return
-				}
-				templist := make([]string, 0)
-				for _, n := range files {
-					templist = append(templist, fmt.Sprintf("%s/%s", path, n.Name()))
-				}
-				embededChan := GetFileListAsync(templist)
-				if err != nil {
-					log.Warn(err)
-					return
-				}
-
-				for item := range embededChan {
-					fichan <- item
-				}
-			} else {
-				fichan <- Finfo{
-					Path: path,
-					Name: finfo.Name(),
-					Info: finfo,
-				}
-			}
-		}
-	}()
-
-	return fichan
-}
-
-func GetFileList(args []string) (fileList []string, err error) {
-	fileList = make([]string, 0)
-	for _, path := range args {
-		finfo, err := os.Stat(path)
-		if err != nil {
-			return nil, err
-		}
-		// 忽略隐藏目录
-		if strings.HasPrefix(finfo.Name(), ".") {
-			continue
-		}
-		if finfo.IsDir() {
-			files, err := ioutil.ReadDir(path)
-			if err != nil {
-				return nil, err
-			}
-			templist := make([]string, 0)
-			for _, n := range files {
-				templist = append(templist, fmt.Sprintf("%s/%s", path, n.Name()))
-			}
-			list, err := GetFileList(templist)
-			if err != nil {
-				return nil, err
-			}
-			fileList = append(fileList, list...)
-		} else {
-			fileList = append(fileList, path)
-		}
-	}
-
-	return
 }
 
 // piece info

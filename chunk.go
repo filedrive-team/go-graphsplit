@@ -7,6 +7,7 @@ import (
 	"path"
 	"time"
 
+	"github.com/filedrive-team/filehelper"
 	ipld "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
@@ -115,7 +116,7 @@ func ErrCallback() GraphBuildCallback {
 func Chunk(ctx context.Context, sliceSize int64, parentPath, targetPath, carDir, graphName string, parallel int, cb GraphBuildCallback) error {
 	var cumuSize int64 = 0
 	graphSliceCount := 0
-	graphFiles := make([]Finfo, 0)
+	graphFiles := make([]filehelper.Finfo, 0)
 	if sliceSize == 0 {
 		return xerrors.Errorf("Unexpected! Slice size has been set as 0")
 	}
@@ -132,7 +133,7 @@ func Chunk(ctx context.Context, sliceSize int64, parentPath, targetPath, carDir,
 		log.Warn("Empty folder or file!")
 		return nil
 	}
-	files := GetFileListAsync(args)
+	files := filehelper.FileWalkAsync(args)
 	for item := range files {
 		fileSize := item.Info.Size()
 		switch {
@@ -148,7 +149,7 @@ func Chunk(ctx context.Context, sliceSize int64, parentPath, targetPath, carDir,
 			fmt.Printf(GenGraphName(graphName, graphSliceCount, sliceTotal))
 			fmt.Printf("=================\n")
 			cumuSize = 0
-			graphFiles = make([]Finfo, 0)
+			graphFiles = make([]filehelper.Finfo, 0)
 			graphSliceCount++
 		case cumuSize+fileSize > sliceSize:
 			fileSliceCount := 0
@@ -160,7 +161,7 @@ func Chunk(ctx context.Context, sliceSize int64, parentPath, targetPath, carDir,
 			var seekEnd int64 = seekStart + firstCut - 1
 			fmt.Printf("first cut %d, seek start at %d, end at %d", firstCut, seekStart, seekEnd)
 			fmt.Printf("----------------\n")
-			graphFiles = append(graphFiles, Finfo{
+			graphFiles = append(graphFiles, filehelper.Finfo{
 				Path:      item.Path,
 				Name:      fmt.Sprintf("%s.%08d", item.Info.Name(), fileSliceCount),
 				Info:      item.Info,
@@ -174,7 +175,7 @@ func Chunk(ctx context.Context, sliceSize int64, parentPath, targetPath, carDir,
 			fmt.Printf(GenGraphName(graphName, graphSliceCount, sliceTotal))
 			fmt.Printf("=================\n")
 			cumuSize = 0
-			graphFiles = make([]Finfo, 0)
+			graphFiles = make([]filehelper.Finfo, 0)
 			graphSliceCount++
 			for seekEnd < fileSize-1 {
 				seekStart = seekEnd + 1
@@ -185,7 +186,7 @@ func Chunk(ctx context.Context, sliceSize int64, parentPath, targetPath, carDir,
 				fmt.Printf("following cut %d, seek start at %d, end at %d", seekEnd-seekStart+1, seekStart, seekEnd)
 				fmt.Printf("----------------\n")
 				cumuSize += seekEnd - seekStart + 1
-				graphFiles = append(graphFiles, Finfo{
+				graphFiles = append(graphFiles, filehelper.Finfo{
 					Path:      item.Path,
 					Name:      fmt.Sprintf("%s.%08d", item.Info.Name(), fileSliceCount),
 					Info:      item.Info,
@@ -200,7 +201,7 @@ func Chunk(ctx context.Context, sliceSize int64, parentPath, targetPath, carDir,
 					fmt.Printf(GenGraphName(graphName, graphSliceCount, sliceTotal))
 					fmt.Printf("=================\n")
 					cumuSize = 0
-					graphFiles = make([]Finfo, 0)
+					graphFiles = make([]filehelper.Finfo, 0)
 					graphSliceCount++
 				}
 			}
