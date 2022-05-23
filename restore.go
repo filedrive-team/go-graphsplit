@@ -23,7 +23,7 @@ import (
 	"golang.org/x/xerrors"
 )
 
-func Import(path string, st car.Store) (cid.Cid, error) {
+func Import(ctx context.Context, path string, st car.Store) (cid.Cid, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return cid.Undef, err
@@ -40,7 +40,7 @@ func Import(path string, st car.Store) (cid.Cid, error) {
 		return cid.Undef, err
 	}
 
-	result, err := car.LoadCar(st, file)
+	result, err := car.LoadCar(ctx, st, file)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -117,7 +117,7 @@ func CarTo(carPath, outputDir string, parallel int) {
 			}
 			workerCh <- func() {
 				log.Info(path)
-				root, err := Import(path, bs2)
+				root, err := Import(ctx, path, bs2)
 				if err != nil {
 					log.Error("import error, ", err)
 					return
