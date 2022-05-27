@@ -3,8 +3,10 @@ package graphsplit
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"io"
 	"os"
+	"path"
 
 	"github.com/filecoin-project/go-commp-utils/ffiwrapper"
 	"github.com/filecoin-project/go-padreader"
@@ -16,12 +18,13 @@ import (
 
 type CommPRet struct {
 	Root cid.Cid
+	PayloadSize int64
 	Size abi.UnpaddedPieceSize
 }
 
 // almost copy paste from https://github.com/filecoin-project/lotus/node/impl/client/client.go#L749-L770
-func CalcCommP(ctx context.Context, inpath string) (*CommPRet, error) {
-
+func CalcCommP(ctx context.Context, inpath string, rename bool) (*CommPRet, error) {
+	dir, _ := path.Split(inpath)
 	// Hard-code the sector type to 32GiBV1_1, because:
 	// - ffiwrapper.GeneratePieceCIDFromFile requires a RegisteredSealProof
 	// - commP itself is sector-size independent, with rather low probability of that changing
@@ -31,6 +34,16 @@ func CalcCommP(ctx context.Context, inpath string) (*CommPRet, error) {
 	// IF/WHEN this changes in the future we will have to be able to calculate
 	// "old style" commP, and thus will need to introduce a version switch or similar
 	arbitraryProofType := abi.RegisteredSealProof_StackedDrg32GiBV1_1
+
+	st, err := os.Stat(inpath)
+	if err != nil  {
+		return nil, err
+	}
+
+	if st.IsDir() {
+		return nil, fmt.Errorf("path %s is dir", inpath)
+	}
+	payloadSize := st.Size()
 
 	rdr, err := os.Open(inpath)
 	if err != nil {
@@ -55,13 +68,16 @@ func CalcCommP(ctx context.Context, inpath string) (*CommPRet, error) {
 
 	pieceReader, pieceSize := padreader.New(rdr, uint64(stat.Size()))
 	commP, err := ffiwrapper.GeneratePieceCIDFromFile(arbitraryProofType, pieceReader, pieceSize)
-
 	if err != nil {
 		return nil, xerrors.Errorf("computing commP failed: %w", err)
 	}
 
+	piecePath := path.Join(dir, commP.String())
+	os.Rename(inpath, piecePath)
+
 	return &CommPRet{
 		Root: commP,
 		Size: pieceSize,
+		PayloadSize: payloadSize,
 	}, nil
 }

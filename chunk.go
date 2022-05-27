@@ -21,12 +21,13 @@ type GraphBuildCallback interface {
 
 type commPCallback struct {
 	carDir string
+	rename bool
 }
 
 func (cc *commPCallback) OnSuccess(node ipld.Node, graphName, fsDetail string) {
 	commpStartTime := time.Now()
 	carfilepath := path.Join(cc.carDir, node.Cid().String()+".car")
-	cpRes, err := CalcCommP(context.TODO(), carfilepath)
+	cpRes, err := CalcCommP(context.TODO(), carfilepath, cc.rename)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -47,11 +48,11 @@ func (cc *commPCallback) OnSuccess(node ipld.Node, graphName, fsDetail string) {
 	}
 	defer f.Close()
 	if isCreateAction {
-		if _, err := f.Write([]byte("playload_cid,filename,piece_cid,piece_size,detail\n")); err != nil {
+		if _, err := f.Write([]byte("playload_cid,filename,piece_cid,payload_size,piece_size,detail\n")); err != nil {
 			log.Fatal(err)
 		}
 	}
-	if _, err := f.Write([]byte(fmt.Sprintf("%s,%s,%s,%d,%s\n", node.Cid(), graphName, cpRes.Root.String(), cpRes.Size, fsDetail))); err != nil {
+	if _, err := f.Write([]byte(fmt.Sprintf("%s,%s,%s,%d,%s\n", node.Cid(), graphName, cpRes.Root.String(), cpRes.PayloadSize, cpRes.Size, fsDetail))); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -101,8 +102,8 @@ func (cc *errCallback) OnError(err error) {
 	log.Fatal(err)
 }
 
-func CommPCallback(carDir string) GraphBuildCallback {
-	return &commPCallback{carDir: carDir}
+func CommPCallback(carDir string, rename bool) GraphBuildCallback {
+	return &commPCallback{carDir: carDir, rename: rename}
 }
 
 func CSVCallback(carDir string) GraphBuildCallback {
