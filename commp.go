@@ -72,12 +72,20 @@ func CalcCommP(ctx context.Context, inpath string, rename bool) (*CommPRet, erro
 		return nil, xerrors.Errorf("computing commP failed: %w", err)
 	}
 
-	piecePath := path.Join(dir, commP.String())
-	os.Rename(inpath, piecePath)
-
+	if padreader.PaddedSize(uint64(payloadSize)) != pieceSize {
+		return nil, xerrors.Errorf("assert car(%s) file to piece fail payload size(%d) piece size (%d)", inpath, payloadSize, pieceSize)
+	}
+	if rename {
+		piecePath := path.Join(dir, commP.String())
+		err = os.Rename(inpath, piecePath)
+		if err != nil {
+			return nil, xerrors.Errorf("rename car(%s) file to piece %w", inpath, err)
+		}
+	}
 	return &CommPRet{
 		Root: commP,
 		Size: pieceSize,
 		PayloadSize: payloadSize,
 	}, nil
 }
+

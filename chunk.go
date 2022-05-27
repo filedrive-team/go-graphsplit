@@ -2,9 +2,11 @@ package graphsplit
 
 import (
 	"context"
+	"encoding/csv"
 	"fmt"
 	"os"
 	"path"
+	"strconv"
 	"time"
 
 	ipld "github.com/ipfs/go-ipld-format"
@@ -25,6 +27,7 @@ type commPCallback struct {
 }
 
 func (cc *commPCallback) OnSuccess(node ipld.Node, graphName, fsDetail string) {
+	fmt.Println("xxxxx")
 	commpStartTime := time.Now()
 	carfilepath := path.Join(cc.carDir, node.Cid().String()+".car")
 	cpRes, err := CalcCommP(context.TODO(), carfilepath, cc.rename)
@@ -47,12 +50,19 @@ func (cc *commPCallback) OnSuccess(node ipld.Node, graphName, fsDetail string) {
 		log.Fatal(err)
 	}
 	defer f.Close()
+
+	csvWriter := csv.NewWriter(f)
+	csvWriter.UseCRLF = true
+	defer csvWriter.Flush()
 	if isCreateAction {
-		if _, err := f.Write([]byte("playload_cid,filename,piece_cid,payload_size,piece_size,detail\n")); err != nil {
-			log.Fatal(err)
-		}
+		csvWriter.Write([]string{
+			"playload_cid","filename","piece_cid","payload_size","piece_size","detail",
+		})
 	}
-	if _, err := f.Write([]byte(fmt.Sprintf("%s,%s,%s,%d,%s\n", node.Cid(), graphName, cpRes.Root.String(), cpRes.PayloadSize, cpRes.Size, fsDetail))); err != nil {
+
+	if err := csvWriter.Write([]string{
+		node.Cid().String(), graphName, cpRes.Root.String(), strconv.FormatInt(cpRes.PayloadSize, 10), strconv.FormatUint(uint64(cpRes.Size), 10), fsDetail,
+	}); err != nil {
 		log.Fatal(err)
 	}
 }
