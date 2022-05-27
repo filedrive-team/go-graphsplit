@@ -74,6 +74,11 @@ var chunkCmd = &cli.Command{
 			Value: false,
 			Usage: "create a mainfest.csv in car-dir to save mapping of data-cids, slice names, piece-cids and piece-sizes",
 		},
+		&cli.BoolFlag{
+			Name: "rename",
+			Value: false,
+			Usage: "rename carfile to piece",
+		},
 	},
 	Action: func(c *cli.Context) error {
 		ctx := context.Background()
@@ -92,7 +97,7 @@ var chunkCmd = &cli.Command{
 		targetPath := c.Args().First()
 		var cb graphsplit.GraphBuildCallback
 		if c.Bool("calc-commp") {
-			cb = graphsplit.CommPCallback(carDir)
+			cb = graphsplit.CommPCallback(carDir, c.Bool("rename"))
 		} else if c.Bool("save-manifest") {
 			cb = graphsplit.CSVCallback(carDir)
 		} else {
@@ -146,7 +151,7 @@ var commpCmd = &cli.Command{
 		ctx := context.Background()
 		targetPath := c.Args().First()
 
-		res, err := graphsplit.CalcCommP(ctx, targetPath)
+		res, err := graphsplit.CalcCommP(ctx, targetPath, false)
 		if err != nil {
 			return err
 		}
