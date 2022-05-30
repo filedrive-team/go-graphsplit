@@ -5,8 +5,8 @@ go 1.15
 require (
 	github.com/beeleelee/go-ds-rpc v0.1.0 // this needs to be updated too https://github.com/beeleelee/go-ds-rpc/pull/3
 	github.com/filecoin-project/go-commp-utils v0.1.3
-	github.com/filecoin-project/go-padreader v0.0.1
-	github.com/filecoin-project/go-state-types v0.1.3
+	github.com/filecoin-project/go-padreader v0.0.1 // indirect
+	github.com/filecoin-project/go-state-types v0.1.4
 	github.com/ipfs/go-blockservice v0.2.1
 	github.com/ipfs/go-cid v0.1.0
 	github.com/ipfs/go-datastore v0.5.1
