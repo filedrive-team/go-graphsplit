@@ -38,18 +38,24 @@ make
 
 Splitting dataset:
 ```sh
-# car-dir: folder for splitted smaller pieces, in form of .car
-# slice-size: size for each pieces
-# parallel: number goroutines run when building ipld nodes
-# graph-name: it will use graph-name for prefix of smaller pieces
-# calc-commp: calculation of pieceCID, default value is false. Be careful, a lot of cpu, memory and time would be consumed if slice size is very large.
-# parent-path: usually just be the same as /path/to/dataset, it's just a method to figure out relative path when building IPLD graph
+
+
 ./graphsplit chunk \
+# car-dir: folder for splitted smaller pieces, in form of .car
 --car-dir=path/to/car-dir \
+# slice-size: size for each pieces
 --slice-size=17179869184 \
+# parallel: number goroutines run when building ipld nodes
 --parallel=2 \
+# graph-name: it will use graph-name for prefix of smaller pieces
 --graph-name=gs-test \
+# calc-commp: calculation of pieceCID, default value is false. Be careful, a lot of cpu, memory and time would be consumed if slice size is very large.
 --calc-commp=false \
+# set true if want padding the car file to fit piece size
+--add-padding=false \
+# set true if want using piececid to name the chunk file
+--rename=false \
+# parent-path: usually just be the same as /path/to/dataset, it's just a method to figure out relative path when building IPLD graph
 --parent-path=/path/to/dataset \
 /path/to/dataset
 ```
