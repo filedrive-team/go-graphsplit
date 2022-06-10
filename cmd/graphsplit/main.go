@@ -75,9 +75,14 @@ var chunkCmd = &cli.Command{
 			Usage: "create a mainfest.csv in car-dir to save mapping of data-cids, slice names, piece-cids and piece-sizes",
 		},
 		&cli.BoolFlag{
-			Name: "rename",
+			Name:  "rename",
 			Value: false,
 			Usage: "rename carfile to piece",
+		},
+		&cli.BoolFlag{
+			Name:  "add-padding",
+			Value: false,
+			Usage: "add padding to carfile in order to convert it to piece file",
 		},
 	},
 	Action: func(c *cli.Context) error {
@@ -97,7 +102,7 @@ var chunkCmd = &cli.Command{
 		targetPath := c.Args().First()
 		var cb graphsplit.GraphBuildCallback
 		if c.Bool("calc-commp") {
-			cb = graphsplit.CommPCallback(carDir, c.Bool("rename"))
+			cb = graphsplit.CommPCallback(carDir, c.Bool("rename"), c.Bool("add-padding"))
 		} else if c.Bool("save-manifest") {
 			cb = graphsplit.CSVCallback(carDir)
 		} else {
@@ -146,12 +151,23 @@ var restoreCmd = &cli.Command{
 var commpCmd = &cli.Command{
 	Name:  "commP",
 	Usage: "PieceCID and PieceSize calculation",
-	Flags: []cli.Flag{},
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "rename",
+			Value: false,
+			Usage: "rename carfile to piece",
+		},
+		&cli.BoolFlag{
+			Name:  "add-padding",
+			Value: false,
+			Usage: "add padding to carfile in order to convert it to piece file",
+		},
+	},
 	Action: func(c *cli.Context) error {
 		ctx := context.Background()
 		targetPath := c.Args().First()
 
-		res, err := graphsplit.CalcCommP(ctx, targetPath, false)
+		res, err := graphsplit.CalcCommP(ctx, targetPath, c.Bool("rename"), c.Bool("add-padding"))
 		if err != nil {
 			return err
 		}
