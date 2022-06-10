@@ -22,15 +22,16 @@ type GraphBuildCallback interface {
 }
 
 type commPCallback struct {
-	carDir string
-	rename bool
+	carDir     string
+	rename     bool
+	addPadding bool
 }
 
 func (cc *commPCallback) OnSuccess(node ipld.Node, graphName, fsDetail string) {
 	fmt.Println("xxxxx")
 	commpStartTime := time.Now()
 	carfilepath := path.Join(cc.carDir, node.Cid().String()+".car")
-	cpRes, err := CalcCommP(context.TODO(), carfilepath, cc.rename)
+	cpRes, err := CalcCommP(context.TODO(), carfilepath, cc.rename, cc.addPadding)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -56,7 +57,7 @@ func (cc *commPCallback) OnSuccess(node ipld.Node, graphName, fsDetail string) {
 	defer csvWriter.Flush()
 	if isCreateAction {
 		csvWriter.Write([]string{
-			"playload_cid","filename","piece_cid","payload_size","piece_size","detail",
+			"playload_cid", "filename", "piece_cid", "payload_size", "piece_size", "detail",
 		})
 	}
 
@@ -112,8 +113,8 @@ func (cc *errCallback) OnError(err error) {
 	log.Fatal(err)
 }
 
-func CommPCallback(carDir string, rename bool) GraphBuildCallback {
-	return &commPCallback{carDir: carDir, rename: rename}
+func CommPCallback(carDir string, rename, addPadding bool) GraphBuildCallback {
+	return &commPCallback{carDir: carDir, rename: rename, addPadding: addPadding}
 }
 
 func CSVCallback(carDir string) GraphBuildCallback {

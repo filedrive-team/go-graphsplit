@@ -29,7 +29,7 @@ func TestCalcCommP(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res, err := CalcCommP(context.TODO(), tempfile, false)
+	res, err := CalcCommP(context.TODO(), tempfile, false, false)
 	if err != nil {
 		t.Fatal(err)
 	}

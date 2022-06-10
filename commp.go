@@ -11,19 +11,20 @@ import (
 	"github.com/filecoin-project/go-commp-utils/ffiwrapper"
 	"github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filedrive-team/filehelper/carv1"
 	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-car"
 	"golang.org/x/xerrors"
 )
 
 type CommPRet struct {
-	Root cid.Cid
+	Root        cid.Cid
 	PayloadSize int64
-	Size abi.UnpaddedPieceSize
+	Size        abi.UnpaddedPieceSize
 }
 
 // almost copy paste from https://github.com/filecoin-project/lotus/node/impl/client/client.go#L749-L770
-func CalcCommP(ctx context.Context, inpath string, rename bool) (*CommPRet, error) {
+func CalcCommP(ctx context.Context, inpath string, rename, addPadding bool) (*CommPRet, error) {
 	dir, _ := path.Split(inpath)
 	// Hard-code the sector type to 32GiBV1_1, because:
 	// - ffiwrapper.GeneratePieceCIDFromFile requires a RegisteredSealProof
@@ -36,7 +37,7 @@ func CalcCommP(ctx context.Context, inpath string, rename bool) (*CommPRet, erro
 	arbitraryProofType := abi.RegisteredSealProof_StackedDrg32GiBV1_1
 
 	st, err := os.Stat(inpath)
-	if err != nil  {
+	if err != nil {
 		return nil, err
 	}
 
@@ -45,7 +46,7 @@ func CalcCommP(ctx context.Context, inpath string, rename bool) (*CommPRet, erro
 	}
 	payloadSize := st.Size()
 
-	rdr, err := os.Open(inpath)
+	rdr, err := os.OpenFile(inpath, os.O_RDWR, 0644)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +56,7 @@ func CalcCommP(ctx context.Context, inpath string, rename bool) (*CommPRet, erro
 	if err != nil {
 		return nil, err
 	}
-
+	carSize := stat.Size()
 	// check that the data is a car file; if it's not, retrieval won't work
 	_, err = car.ReadHeader(bufio.NewReader(rdr))
 	if err != nil {
@@ -66,7 +67,7 @@ func CalcCommP(ctx context.Context, inpath string, rename bool) (*CommPRet, erro
 		return nil, xerrors.Errorf("seek to start: %w", err)
 	}
 
-	pieceReader, pieceSize := padreader.New(rdr, uint64(stat.Size()))
+	pieceReader, pieceSize := padreader.New(rdr, uint64(carSize))
 	commP, err := ffiwrapper.GeneratePieceCIDFromFile(arbitraryProofType, pieceReader, pieceSize)
 	if err != nil {
 		return nil, xerrors.Errorf("computing commP failed: %w", err)
@@ -74,6 +75,16 @@ func CalcCommP(ctx context.Context, inpath string, rename bool) (*CommPRet, erro
 
 	if padreader.PaddedSize(uint64(payloadSize)) != pieceSize {
 		return nil, xerrors.Errorf("assert car(%s) file to piece fail payload size(%d) piece size (%d)", inpath, payloadSize, pieceSize)
+	}
+	if addPadding {
+		// make sure fd point to the end of file
+		// better to check within carv1.PadCar, for now is a workaround
+		if _, err := rdr.Seek(carSize, io.SeekStart); err != nil {
+			return nil, xerrors.Errorf("seek to start: %w", err)
+		}
+		if err := carv1.PadCar(rdr, carSize); err != nil {
+			return nil, xerrors.Errorf("failed to pad car file: %w", err)
+		}
 	}
 	if rename {
 		piecePath := path.Join(dir, commP.String())
@@ -83,9 +94,8 @@ func CalcCommP(ctx context.Context, inpath string, rename bool) (*CommPRet, erro
 		}
 	}
 	return &CommPRet{
-		Root: commP,
-		Size: pieceSize,
+		Root:        commP,
+		Size:        pieceSize,
 		PayloadSize: payloadSize,
 	}, nil
 }
-
