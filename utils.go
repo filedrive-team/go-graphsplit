@@ -139,7 +139,7 @@ func buildIpldGraph(ctx context.Context, fileList []Finfo, parentPath, carDir st
 	bs2 := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 	dagServ := merkledag.NewDAGService(blockservice.New(bs2, offline.Exchange(bs2)))
 
-	cidBuilder, err := merkledag.PrefixForCidVersion(0)
+	cidBuilder, err := merkledag.PrefixForCidVersion(1)
 	if err != nil {
 		return nil, "", err
 	}
