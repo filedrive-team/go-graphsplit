@@ -98,8 +98,6 @@ func ExistDir(path string) bool {
 
 func CarTo(carPath, outputDir string, parallel int) {
 	ctx := context.Background()
-	bs2 := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
-	rdag := merkledag.NewDAGService(blockservice.New(bs2, offline.Exchange(bs2)))
 
 	workerCh := make(chan func())
 	go func() {
@@ -116,6 +114,8 @@ func CarTo(carPath, outputDir string, parallel int) {
 				return nil
 			}
 			workerCh <- func() {
+				bs2 := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
+				rdag := merkledag.NewDAGService(blockservice.New(bs2, offline.Exchange(bs2)))
 				log.Info(path)
 				root, err := Import(ctx, path, bs2)
 				if err != nil {
@@ -132,6 +132,7 @@ func CarTo(carPath, outputDir string, parallel int) {
 					log.Error("NewUnixfsFile error, ", err)
 					return
 				}
+				defer file.Close()
 				err = NodeWriteTo(file, outputDir)
 				if err != nil {
 					log.Error("NodeWriteTo error, ", err)
