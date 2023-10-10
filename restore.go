@@ -132,6 +132,7 @@ func CarTo(carPath, outputDir string, parallel int) {
 					log.Error("NewUnixfsFile error, ", err)
 					return
 				}
+				defer file.Close()
 				err = NodeWriteTo(file, outputDir)
 				if err != nil {
 					log.Error("NodeWriteTo error, ", err)
