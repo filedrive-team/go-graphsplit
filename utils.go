@@ -40,11 +40,12 @@ const UnixfsLinksPerLevel = 1 << 10
 const UnixfsChunkSize uint64 = 1 << 20
 
 type Finfo struct {
-	Path      string
-	Name      string
-	Info      os.FileInfo
-	SeekStart int64
-	SeekEnd   int64
+	Path       string
+	ParentPath string
+	Name       string
+	Info       os.FileInfo
+	SeekStart  int64
+	SeekEnd    int64
 }
 
 // file system tree node
@@ -125,8 +126,8 @@ func (b *FSBuilder) getNodeByLink(ln *format.Link) (fn fsNode, err error) {
 	return
 }
 
-func BuildIpldGraph(ctx context.Context, fileList []Finfo, graphName, parentPath, carDir string, parallel int, cb GraphBuildCallback) {
-	node, fsDetail, err := buildIpldGraph(ctx, fileList, parentPath, carDir, parallel)
+func BuildIpldGraph(ctx context.Context, fileList []Finfo, graphName, carDir string, parallel int, cb GraphBuildCallback) {
+	node, fsDetail, err := buildIpldGraph(ctx, fileList, carDir, parallel)
 	if err != nil {
 		//log.Fatal(err)
 		cb.OnError(err)
@@ -135,7 +136,7 @@ func BuildIpldGraph(ctx context.Context, fileList []Finfo, graphName, parentPath
 	cb.OnSuccess(node, graphName, fsDetail)
 }
 
-func buildIpldGraph(ctx context.Context, fileList []Finfo, parentPath, carDir string, parallel int) (ipld.Node, string, error) {
+func buildIpldGraph(ctx context.Context, fileList []Finfo, carDir string, parallel int) (ipld.Node, string, error) {
 	bs2 := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 	dagServ := merkledag.NewDAGService(blockservice.New(bs2, offline.Exchange(bs2)))
 
@@ -195,7 +196,7 @@ func buildIpldGraph(ctx context.Context, fileList []Finfo, parentPath, carDir st
 		// log.Info(item.Path)
 		// log.Infof("file name: %s, file size: %d, item size: %d, seek-start:%d, seek-end:%d", item.Name, item.Info.Size(), item.SeekEnd-item.SeekStart, item.SeekStart, item.SeekEnd)
 		dirStr := path.Dir(item.Path)
-		parentPath = path.Clean(parentPath)
+		parentPath := path.Clean(item.ParentPath)
 		// when parent path equal target path, and the parent path is also a file path
 		if parentPath == path.Clean(item.Path) {
 			dirStr = ""
@@ -490,6 +491,15 @@ func GetFileListAsync(args []string) chan Finfo {
 	}()
 
 	return fichan
+}
+
+func SetParentPathAsync(in chan Finfo, out chan Finfo, parentPath string) {
+	go func() {
+		for item := range in {
+			item.ParentPath = parentPath
+			out <- item
+		}
+	}()
 }
 
 func GetFileList(args []string) (fileList []string, err error) {
