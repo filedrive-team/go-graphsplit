@@ -20,7 +20,6 @@ import (
 	"github.com/ipfs/go-merkledag"
 	unixfile "github.com/ipfs/go-unixfs/file"
 	"github.com/ipld/go-car"
-	"golang.org/x/xerrors"
 )
 
 func Import(ctx context.Context, path string, st car.Store) (cid.Cid, error) {
@@ -46,7 +45,7 @@ func Import(ctx context.Context, path string, st car.Store) (cid.Cid, error) {
 	}
 
 	if len(result.Roots) != 1 {
-		return cid.Undef, xerrors.New("cannot import car with more than one root")
+		return cid.Undef, fmt.Errorf("cannot import car with more than one root")
 	}
 
 	return result.Roots[0], nil

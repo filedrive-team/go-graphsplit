@@ -14,7 +14,6 @@ import (
 	"github.com/filedrive-team/filehelper/carv1"
 	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-car"
-	"golang.org/x/xerrors"
 )
 
 type CommPRet struct {
@@ -60,42 +59,79 @@ func CalcCommP(ctx context.Context, inpath string, rename, addPadding bool) (*Co
 	// check that the data is a car file; if it's not, retrieval won't work
 	_, err = car.ReadHeader(bufio.NewReader(rdr))
 	if err != nil {
-		return nil, xerrors.Errorf("not a car file: %w", err)
+		return nil, fmt.Errorf("not a car file: %w", err)
 	}
 
 	if _, err := rdr.Seek(0, io.SeekStart); err != nil {
-		return nil, xerrors.Errorf("seek to start: %w", err)
+		return nil, fmt.Errorf("seek to start: %w", err)
 	}
 
 	pieceReader, pieceSize := padreader.New(rdr, uint64(carSize))
 	commP, err := ffiwrapper.GeneratePieceCIDFromFile(arbitraryProofType, pieceReader, pieceSize)
 	if err != nil {
-		return nil, xerrors.Errorf("computing commP failed: %w", err)
+		return nil, fmt.Errorf("computing commP failed: %w", err)
 	}
 
 	if padreader.PaddedSize(uint64(payloadSize)) != pieceSize {
-		return nil, xerrors.Errorf("assert car(%s) file to piece fail payload size(%d) piece size (%d)", inpath, payloadSize, pieceSize)
+		return nil, fmt.Errorf("assert car(%s) file to piece fail payload size(%d) piece size (%d)", inpath, payloadSize, pieceSize)
 	}
 	if addPadding {
 		// make sure fd point to the end of file
 		// better to check within carv1.PadCar, for now is a workaround
 		if _, err := rdr.Seek(carSize, io.SeekStart); err != nil {
-			return nil, xerrors.Errorf("seek to start: %w", err)
+			return nil, fmt.Errorf("seek to start: %w", err)
 		}
 		if err := carv1.PadCar(rdr, carSize); err != nil {
-			return nil, xerrors.Errorf("failed to pad car file: %w", err)
+			return nil, fmt.Errorf("failed to pad car file: %w", err)
 		}
 	}
 	if rename {
 		piecePath := path.Join(dir, commP.String())
 		err = os.Rename(inpath, piecePath)
 		if err != nil {
-			return nil, xerrors.Errorf("rename car(%s) file to piece %w", inpath, err)
+			return nil, fmt.Errorf("rename car(%s) file to piece %w", inpath, err)
 		}
 	}
 	return &CommPRet{
 		Root:        commP,
 		Size:        pieceSize,
 		PayloadSize: payloadSize,
+	}, nil
+}
+
+func CalcCommPV2(buf *Buffer, addPadding bool) (*CommPRet, error) {
+	arbitraryProofType := abi.RegisteredSealProof_StackedDrg32GiBV1_1
+
+	// check that the data is a car file; if it's not, retrieval won't work
+	_, err := car.ReadHeader(bufio.NewReader(buf))
+	if err != nil {
+		return nil, fmt.Errorf("not a car file: %w", err)
+	}
+
+	carSize := int64(buf.Len())
+	buf.SeekStart()
+	pieceReader, pieceSize := padreader.New(buf, uint64(carSize))
+	commP, err := ffiwrapper.GeneratePieceCIDFromFile(arbitraryProofType, pieceReader, pieceSize)
+	if err != nil {
+		return nil, fmt.Errorf("computing commP failed: %w", err)
+	}
+
+	if padreader.PaddedSize(uint64(carSize)) != pieceSize {
+		return nil, fmt.Errorf("assert file to piece fail payload size(%d) piece size (%d)", carSize, pieceSize)
+	}
+
+	if addPadding {
+		// make sure fd point to the end of file
+		// better to check within carv1.PadCar, for now is a workaround
+		buf.Seek(int(carSize))
+		if err := carv1.PadCar(buf, carSize); err != nil {
+			return nil, fmt.Errorf("failed to pad car file: %w", err)
+		}
+	}
+
+	return &CommPRet{
+		Root:        commP,
+		Size:        pieceSize,
+		PayloadSize: int64(carSize),
 	}, nil
 }

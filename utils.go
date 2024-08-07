@@ -20,13 +20,10 @@ import (
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	chunker "github.com/ipfs/go-ipfs-chunker"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
-	format "github.com/ipfs/go-ipld-format"
-	"github.com/ipfs/go-merkledag"
 	dag "github.com/ipfs/go-merkledag"
 	"github.com/ipfs/go-unixfs"
 	"github.com/ipfs/go-unixfs/importer/balanced"
 	ihelper "github.com/ipfs/go-unixfs/importer/helpers"
-	"golang.org/x/xerrors"
 
 	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/ipld/go-car"
@@ -67,7 +64,7 @@ func NewFSBuilder(root *dag.ProtoNode, ds ipld.DAGService) *FSBuilder {
 func (b *FSBuilder) Build() (*fsNode, error) {
 	fsn, err := unixfs.FSNodeFromBytes(b.root.Data())
 	if err != nil {
-		return nil, xerrors.Errorf("input dag is not a unixfs node: %s", err)
+		return nil, fmt.Errorf("input dag is not a unixfs node: %s", err)
 	}
 
 	rootn := &fsNode{
@@ -89,7 +86,7 @@ func (b *FSBuilder) Build() (*fsNode, error) {
 	return rootn, nil
 }
 
-func (b *FSBuilder) getNodeByLink(ln *format.Link) (fn fsNode, err error) {
+func (b *FSBuilder) getNodeByLink(ln *ipld.Link) (fn fsNode, err error) {
 	ctx := context.Background()
 	fn = fsNode{
 		Name: ln.Name,
@@ -104,7 +101,7 @@ func (b *FSBuilder) getNodeByLink(ln *format.Link) (fn fsNode, err error) {
 
 	nnd, ok := nd.(*dag.ProtoNode)
 	if !ok {
-		err = xerrors.Errorf("failed to transformed to dag.ProtoNode")
+		err = fmt.Errorf("failed to transformed to dag.ProtoNode")
 		return
 	}
 	fsn, err := unixfs.FSNodeFromBytes(nnd.Data())
@@ -126,22 +123,22 @@ func (b *FSBuilder) getNodeByLink(ln *format.Link) (fn fsNode, err error) {
 }
 
 func BuildIpldGraph(ctx context.Context, fileList []Finfo, graphName, parentPath, carDir string, parallel int, cb GraphBuildCallback) {
-	node, fsDetail, err := buildIpldGraph(ctx, fileList, parentPath, carDir, parallel)
+	buf, payloadCid, fsDetail, err := buildIpldGraph(ctx, fileList, parentPath, parallel)
 	if err != nil {
 		//log.Fatal(err)
 		cb.OnError(err)
 		return
 	}
-	cb.OnSuccess(node, graphName, fsDetail)
+	cb.OnSuccess(buf, graphName, payloadCid, fsDetail)
 }
 
-func buildIpldGraph(ctx context.Context, fileList []Finfo, parentPath, carDir string, parallel int) (ipld.Node, string, error) {
+func buildIpldGraph(ctx context.Context, fileList []Finfo, parentPath string, parallel int) (*Buffer, string, string, error) {
 	bs2 := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
-	dagServ := merkledag.NewDAGService(blockservice.New(bs2, offline.Exchange(bs2)))
+	dagServ := dag.NewDAGService(blockservice.New(bs2, offline.Exchange(bs2)))
 
-	cidBuilder, err := merkledag.PrefixForCidVersion(1)
+	cidBuilder, err := dag.PrefixForCidVersion(1)
 	if err != nil {
-		return nil, "", err
+		return nil, "", "", err
 	}
 	fileNodeMap := make(map[string]*dag.ProtoNode)
 	dirNodeMap := make(map[string]*dag.ProtoNode)
@@ -202,10 +199,8 @@ func buildIpldGraph(ctx context.Context, fileList []Finfo, parentPath, carDir st
 		} else if parentPath != "" && strings.HasPrefix(dirStr, parentPath) {
 			dirStr = dirStr[len(parentPath):]
 		}
+		dirStr = strings.TrimPrefix(dirStr, "/")
 
-		if strings.HasPrefix(dirStr, "/") {
-			dirStr = dirStr[1:]
-		}
 		var dirList []string
 		if dirStr == "" {
 			dirList = []string{}
@@ -258,7 +253,7 @@ func buildIpldGraph(ctx context.Context, fileList []Finfo, parentPath, carDir st
 			if isLinked(parentNode, dir) {
 				parentNode, err = parentNode.UpdateNodeLink(dir, dirNode)
 				if err != nil {
-					return nil, "", err
+					return nil, "", "", err
 				}
 				dirNodeMap[parentKey] = parentNode
 			} else {
@@ -274,37 +269,32 @@ func buildIpldGraph(ctx context.Context, fileList []Finfo, parentPath, carDir st
 	}
 
 	rootNode = dirNodeMap[rootKey]
-	fmt.Printf("root node cid: %s\n", rootNode.Cid())
+	log.Infof("root node cid: %s", rootNode.Cid())
 	log.Infof("start to generate car for %s", rootNode.Cid())
 	genCarStartTime := time.Now()
 	//car
-	carF, err := os.Create(path.Join(carDir, rootNode.Cid().String()+".car"))
-	if err != nil {
-		return nil, "", err
-	}
-	defer carF.Close()
+	buf := new(Buffer)
 	selector := allSelector()
 	sc := car.NewSelectiveCar(ctx, bs2, []car.Dag{{Root: rootNode.Cid(), Selector: selector}})
-	err = sc.Write(carF)
-	// cario := cario.NewCarIO()
-	// err = cario.WriteCar(context.Background(), bs2, rootNode.Cid(), selector, carF)
+	err = sc.Write(buf)
 	if err != nil {
-		return nil, "", err
+		return nil, "", "", err
 	}
-	log.Infof("generate car file completed, time elapsed: %s", time.Now().Sub(genCarStartTime))
+	log.Infof("generate car file completed, time elapsed: %s", time.Since(genCarStartTime))
 
 	fsBuilder := NewFSBuilder(rootNode, dagServ)
 	fsNode, err := fsBuilder.Build()
 	if err != nil {
-		return nil, "", err
+		return nil, "", "", err
 	}
 	fsNodeBytes, err := json.Marshal(fsNode)
 	if err != nil {
-		return nil, "", err
+		return nil, "", "", err
 	}
 	//log.Info(dirNodeMap)
-	fmt.Println("++++++++++++ finished to build ipld +++++++++++++")
-	return rootNode, fmt.Sprintf("%s", fsNodeBytes), nil
+	log.Info("++++++++++++ finished to build ipld +++++++++++++")
+
+	return buf, rootNode.Cid().String(), string(fsNodeBytes), nil
 }
 
 func allSelector() ipldprime.Node {
@@ -358,7 +348,7 @@ func (fs *fileSlice) Read(p []byte) (n int, err error) {
 		return 0, io.EOF
 	}
 	if fs.end-fs.offset+1 < 0 {
-		return 0, xerrors.Errorf("read data out bound of the slice")
+		return 0, fmt.Errorf("read data out bound of the slice")
 	}
 	plen := len(p)
 	leftLen := fs.end - fs.offset + 1

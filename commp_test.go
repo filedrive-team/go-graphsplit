@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/base64"
 	"io"
-	"io/ioutil"
 	"os"
 	"testing"
 )
@@ -17,7 +16,7 @@ func TestCalcCommP(t *testing.T) {
 		t.Fatalf("base64 decode error: %v", err)
 	}
 	tempDir := os.TempDir()
-	f, err := ioutil.TempFile(tempDir, "test_car")
+	f, err := os.CreateTemp(tempDir, "test_car")
 	if err != nil {
 		t.Fatalf("create tempfile error: %v", err)
 	}

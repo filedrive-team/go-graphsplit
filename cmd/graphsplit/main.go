@@ -9,7 +9,6 @@ import (
 	"github.com/filedrive-team/go-graphsplit/dataset"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
-	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("graphsplit")
@@ -85,18 +84,19 @@ var chunkCmd = &cli.Command{
 			Usage: "add padding to carfile in order to convert it to piece file",
 		},
 	},
+	ArgsUsage: "<input path>",
 	Action: func(c *cli.Context) error {
 		ctx := context.Background()
 		parallel := c.Uint("parallel")
 		sliceSize := c.Uint64("slice-size")
 		parentPath := c.String("parent-path")
 		carDir := c.String("car-dir")
-		if !graphsplit.ExistDir(carDir) {
-			return xerrors.Errorf("Unexpected! The path of car-dir does not exist")
-		}
 		graphName := c.String("graph-name")
+		if !graphsplit.ExistDir(carDir) {
+			return fmt.Errorf("the path of car-dir does not exist")
+		}
 		if sliceSize == 0 {
-			return xerrors.Errorf("Unexpected! Slice size has been set as 0")
+			return fmt.Errorf("slice size has been set as 0")
 		}
 
 		targetPath := c.Args().First()
@@ -108,6 +108,7 @@ var chunkCmd = &cli.Command{
 		} else {
 			cb = graphsplit.ErrCallback()
 		}
+
 		return graphsplit.Chunk(ctx, int64(sliceSize), parentPath, targetPath, carDir, graphName, int(parallel), cb)
 	},
 }
@@ -137,7 +138,7 @@ var restoreCmd = &cli.Command{
 		outputDir := c.String("output-dir")
 		carPath := c.String("car-path")
 		if parallel <= 0 {
-			return xerrors.Errorf("Unexpected! Parallel has to be greater than 0")
+			return fmt.Errorf("Unexpected! Parallel has to be greater than 0")
 		}
 
 		graphsplit.CarTo(carPath, outputDir, parallel)
@@ -192,7 +193,7 @@ var importDatasetCmd = &cli.Command{
 
 		targetPath := c.Args().First()
 		if !graphsplit.ExistDir(targetPath) {
-			return xerrors.Errorf("Unexpected! The path to dataset does not exist")
+			return fmt.Errorf("Unexpected! The path to dataset does not exist")
 		}
 
 		return dataset.Import(ctx, targetPath, c.String("dsmongo"))

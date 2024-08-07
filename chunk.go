@@ -9,15 +9,13 @@ import (
 	"strconv"
 	"time"
 
-	ipld "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log/v2"
-	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("graphsplit")
 
 type GraphBuildCallback interface {
-	OnSuccess(node ipld.Node, graphName, fsDetail string)
+	OnSuccess(buf *Buffer, graphName, payloadCid, fsDetail string)
 	OnError(error)
 }
 
@@ -27,15 +25,21 @@ type commPCallback struct {
 	addPadding bool
 }
 
-func (cc *commPCallback) OnSuccess(node ipld.Node, graphName, fsDetail string) {
-	fmt.Println("xxxxx")
+func (cc *commPCallback) OnSuccess(buf *Buffer, graphName, payloadCid, fsDetail string) {
 	commpStartTime := time.Now()
-	carfilepath := path.Join(cc.carDir, node.Cid().String()+".car")
-	cpRes, err := CalcCommP(context.TODO(), carfilepath, cc.rename, cc.addPadding)
+
+	cpRes, err := CalcCommPV2(buf, cc.addPadding)
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Infof("calculation of pieceCID completed, time elapsed: %s", time.Now().Sub(commpStartTime))
+	log.Infof("calculation of pieceCID completed, time elapsed: %s", time.Since(commpStartTime))
+	log.Infof("piece cid: %s, payload size: %d, size: %d ", cpRes.Root.String(), cpRes.PayloadSize, cpRes.Size)
+
+	buf.SeekStart()
+	if err := os.WriteFile(path.Join(cc.carDir, cpRes.Root.String()+".car"), buf.Bytes(), 0644); err != nil {
+		log.Fatal(err)
+	}
+
 	// Add node inof to manifest.csv
 	manifestPath := path.Join(cc.carDir, "manifest.csv")
 	_, err = os.Stat(manifestPath)
@@ -57,13 +61,12 @@ func (cc *commPCallback) OnSuccess(node ipld.Node, graphName, fsDetail string) {
 	defer csvWriter.Flush()
 	if isCreateAction {
 		csvWriter.Write([]string{
-			"playload_cid", "filename", "piece_cid", "payload_size", "piece_size", "detail",
+			"payload_cid", "filename", "piece_cid", "payload_size", "piece_size", "detail",
 		})
 	}
 
-	if err := csvWriter.Write([]string{
-		node.Cid().String(), graphName, cpRes.Root.String(), strconv.FormatInt(cpRes.PayloadSize, 10), strconv.FormatUint(uint64(cpRes.Size), 10), fsDetail,
-	}); err != nil {
+	if err := csvWriter.Write([]string{payloadCid, graphName, cpRes.Root.String(),
+		strconv.FormatInt(cpRes.PayloadSize, 10), strconv.FormatUint(uint64(cpRes.Size), 10), fsDetail}); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -76,7 +79,7 @@ type csvCallback struct {
 	carDir string
 }
 
-func (cc *csvCallback) OnSuccess(node ipld.Node, graphName, fsDetail string) {
+func (cc *csvCallback) OnSuccess(buf *Buffer, graphName, payloadCid, fsDetail string) {
 	// Add node inof to manifest.csv
 	manifestPath := path.Join(cc.carDir, "manifest.csv")
 	_, err := os.Stat(manifestPath)
@@ -93,11 +96,16 @@ func (cc *csvCallback) OnSuccess(node ipld.Node, graphName, fsDetail string) {
 	}
 	defer f.Close()
 	if isCreateAction {
-		if _, err := f.Write([]byte("playload_cid,filename,detail\n")); err != nil {
+		if _, err := f.Write([]byte("payload_cid,filename,detail")); err != nil {
 			log.Fatal(err)
 		}
 	}
-	if _, err := f.Write([]byte(fmt.Sprintf("%s,%s,%s\n", node.Cid(), graphName, fsDetail))); err != nil {
+
+	if err := os.WriteFile(path.Join(cc.carDir, payloadCid+".car"), buf.Bytes(), 0644); err != nil {
+		log.Fatal(err)
+	}
+
+	if _, err := f.Write([]byte(fmt.Sprintf("%s,%s,%s", payloadCid, graphName, fsDetail))); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -108,7 +116,7 @@ func (cc *csvCallback) OnError(err error) {
 
 type errCallback struct{}
 
-func (cc *errCallback) OnSuccess(ipld.Node, string, string) {}
+func (cc *errCallback) OnSuccess(*Buffer, string, string, string) {}
 func (cc *errCallback) OnError(err error) {
 	log.Fatal(err)
 }
@@ -129,10 +137,10 @@ func Chunk(ctx context.Context, sliceSize int64, parentPath, targetPath, carDir,
 	graphSliceCount := 0
 	graphFiles := make([]Finfo, 0)
 	if sliceSize == 0 {
-		return xerrors.Errorf("Unexpected! Slice size has been set as 0")
+		return fmt.Errorf("slice size has been set as 0")
 	}
 	if parallel <= 0 {
-		return xerrors.Errorf("Unexpected! Parallel has to be greater than 0")
+		return fmt.Errorf("parallel has to be greater than 0")
 	}
 	if parentPath == "" {
 		parentPath = targetPath
@@ -156,9 +164,9 @@ func Chunk(ctx context.Context, sliceSize int64, parentPath, targetPath, carDir,
 			graphFiles = append(graphFiles, item)
 			// todo build ipld from graphFiles
 			BuildIpldGraph(ctx, graphFiles, GenGraphName(graphName, graphSliceCount, sliceTotal), parentPath, carDir, parallel, cb)
-			fmt.Printf("cumu-size: %d\n", cumuSize)
-			fmt.Printf(GenGraphName(graphName, graphSliceCount, sliceTotal))
-			fmt.Printf("=================\n")
+			log.Infof("cumu-size: %d", cumuSize)
+			log.Infof("%s", GenGraphName(graphName, graphSliceCount, sliceTotal))
+			log.Infof("=================")
 			cumuSize = 0
 			graphFiles = make([]Finfo, 0)
 			graphSliceCount++
@@ -170,8 +178,8 @@ func Chunk(ctx context.Context, sliceSize int64, parentPath, targetPath, carDir,
 			firstCut := sliceSize - cumuSize
 			var seekStart int64 = 0
 			var seekEnd int64 = seekStart + firstCut - 1
-			fmt.Printf("first cut %d, seek start at %d, end at %d", firstCut, seekStart, seekEnd)
-			fmt.Printf("----------------\n")
+			log.Infof("first cut %d, seek start at %d, end at %d", firstCut, seekStart, seekEnd)
+			log.Infof("----------------")
 			graphFiles = append(graphFiles, Finfo{
 				Path:      item.Path,
 				Name:      fmt.Sprintf("%s.%08d", item.Info.Name(), fileSliceCount),
@@ -182,9 +190,9 @@ func Chunk(ctx context.Context, sliceSize int64, parentPath, targetPath, carDir,
 			fileSliceCount++
 			// todo build ipld from graphFiles
 			BuildIpldGraph(ctx, graphFiles, GenGraphName(graphName, graphSliceCount, sliceTotal), parentPath, carDir, parallel, cb)
-			fmt.Printf("cumu-size: %d\n", cumuSize+firstCut)
-			fmt.Printf(GenGraphName(graphName, graphSliceCount, sliceTotal))
-			fmt.Printf("=================\n")
+			log.Infof("cumu-size: %d", cumuSize+firstCut)
+			log.Infof("%s", GenGraphName(graphName, graphSliceCount, sliceTotal))
+			log.Infof("=================")
 			cumuSize = 0
 			graphFiles = make([]Finfo, 0)
 			graphSliceCount++
@@ -194,8 +202,8 @@ func Chunk(ctx context.Context, sliceSize int64, parentPath, targetPath, carDir,
 				if seekEnd >= fileSize-1 {
 					seekEnd = fileSize - 1
 				}
-				fmt.Printf("following cut %d, seek start at %d, end at %d", seekEnd-seekStart+1, seekStart, seekEnd)
-				fmt.Printf("----------------\n")
+				log.Infof("following cut %d, seek start at %d, end at %d", seekEnd-seekStart+1, seekStart, seekEnd)
+				log.Infof("----------------")
 				cumuSize += seekEnd - seekStart + 1
 				graphFiles = append(graphFiles, Finfo{
 					Path:      item.Path,
@@ -208,9 +216,9 @@ func Chunk(ctx context.Context, sliceSize int64, parentPath, targetPath, carDir,
 				if seekEnd-seekStart == sliceSize-1 {
 					// todo build ipld from graphFiles
 					BuildIpldGraph(ctx, graphFiles, GenGraphName(graphName, graphSliceCount, sliceTotal), parentPath, carDir, parallel, cb)
-					fmt.Printf("cumu-size: %d\n", sliceSize)
-					fmt.Printf(GenGraphName(graphName, graphSliceCount, sliceTotal))
-					fmt.Printf("=================\n")
+					log.Infof("cumu-size: %d", sliceSize)
+					log.Infof("%s", GenGraphName(graphName, graphSliceCount, sliceTotal))
+					log.Infof("=================")
 					cumuSize = 0
 					graphFiles = make([]Finfo, 0)
 					graphSliceCount++
@@ -222,9 +230,9 @@ func Chunk(ctx context.Context, sliceSize int64, parentPath, targetPath, carDir,
 	if cumuSize > 0 {
 		// todo build ipld from graphFiles
 		BuildIpldGraph(ctx, graphFiles, GenGraphName(graphName, graphSliceCount, sliceTotal), parentPath, carDir, parallel, cb)
-		fmt.Printf("cumu-size: %d\n", cumuSize)
-		fmt.Printf(GenGraphName(graphName, graphSliceCount, sliceTotal))
-		fmt.Printf("=================\n")
+		log.Infof("cumu-size: %d", cumuSize)
+		log.Infof("%s", GenGraphName(graphName, graphSliceCount, sliceTotal))
+		log.Infof("=================")
 	}
 	return nil
 }

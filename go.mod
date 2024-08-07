@@ -1,6 +1,6 @@
 module github.com/filedrive-team/go-graphsplit
 
-go 1.18
+go 1.21
 
 require (
 	github.com/beeleelee/go-ds-rpc v0.1.0 // this needs to be updated too https://github.com/beeleelee/go-ds-rpc/pull/3
@@ -22,7 +22,6 @@ require (
 	github.com/ipld/go-car v0.4.0
 	github.com/ipld/go-ipld-prime v0.16.0
 	github.com/urfave/cli/v2 v2.6.0
-	golang.org/x/xerrors v0.0.0-20220517211312-f3a8303e98df
 )
 
 require (
@@ -90,6 +89,7 @@ require (
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4 // indirect
 	golang.org/x/sys v0.0.0-20220811171246-fbc7d0a398ab // indirect
 	golang.org/x/text v0.3.7 // indirect
+	golang.org/x/xerrors v0.0.0-20220517211312-f3a8303e98df // indirect
 	google.golang.org/genproto v0.0.0-20200825200019-8632dd797987 // indirect
 	google.golang.org/grpc v1.40.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
