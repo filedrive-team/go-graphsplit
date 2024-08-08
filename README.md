@@ -19,15 +19,9 @@ Another advantage of Graphsplit is it can perfectly match IPFS. Like if you buil
 
 ## Build
 ```sh
-git clone https://github.com/filedrive-team/go-graphsplit.git
+git clone https://github.com/ipfs-force-community/go-graphsplit.git
 
 cd go-graphsplit
-
-# get submodules
-git submodule update --init --recursive
-
-# build filecoin-ffi
-make ffi
 
 make
 ```
@@ -38,8 +32,6 @@ make
 
 Splitting dataset:
 ```sh
-
-
 ./graphsplit chunk \
 # car-dir: folder for splitted smaller pieces, in form of .car
 --car-dir=path/to/car-dir \
@@ -50,22 +42,24 @@ Splitting dataset:
 # graph-name: it will use graph-name for prefix of smaller pieces
 --graph-name=gs-test \
 # calc-commp: calculation of pieceCID, default value is false. Be careful, a lot of cpu, memory and time would be consumed if slice size is very large.
---calc-commp=false \
+--calc-commp=true \
 # set true if want padding the car file to fit piece size
 --add-padding=false \
 # set true if want using piececid to name the chunk file
---rename=false \
-# parent-path: usually just be the same as /path/to/dataset, it's just a method to figure out relative path when building IPLD graph
---parent-path=/path/to/dataset \
+--rename=true \
 /path/to/dataset
 ```
-Notes: A manifest.csv will created to save the mapping with graph slice name, the payload cid and slice inner structure. As following:
+
+> Notes: A manifest.csv will created to save the mapping with graph slice name, the payload cid and slice inner structure. As following:
+
 ```sh
 cat /path/to/car-dir/manifest.csv
 payload_cid,filename,detail
 ba...,graph-slice-name.car,inner-structure-json
 ```
-If set --calc-commp=true, two another fields would be add to manifest.csv
+
+If set `--calc-commp=true`, two another fields would be add to manifest.csv
+
 ```sh
 cat /path/to/car-dir/manifest.csv
 payload_cid,filename,piece_cid,piece_size,detail
@@ -101,8 +95,6 @@ PieceCID Calculation for a single car file:
 
 PRs are welcome!
 
-
 ## License
 
 MIT
-
