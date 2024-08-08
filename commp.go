@@ -8,10 +8,9 @@ import (
 	"os"
 	"path"
 
-	"github.com/filecoin-project/go-commp-utils/ffiwrapper"
+	"github.com/filecoin-project/go-commp-utils/v2"
 	"github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filedrive-team/filehelper/carv1"
 	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-car"
 )
@@ -45,7 +44,7 @@ func CalcCommP(ctx context.Context, inpath string, rename, addPadding bool) (*Co
 	}
 	payloadSize := st.Size()
 
-	rdr, err := os.OpenFile(inpath, os.O_RDWR, 0644)
+	rdr, err := os.OpenFile(inpath, os.O_RDWR, 0o644)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +66,7 @@ func CalcCommP(ctx context.Context, inpath string, rename, addPadding bool) (*Co
 	}
 
 	pieceReader, pieceSize := padreader.New(rdr, uint64(carSize))
-	commP, err := ffiwrapper.GeneratePieceCIDFromFile(arbitraryProofType, pieceReader, pieceSize)
+	commP, err := commp.GeneratePieceCIDFromFile(arbitraryProofType, pieceReader, pieceSize)
 	if err != nil {
 		return nil, fmt.Errorf("computing commP failed: %w", err)
 	}
@@ -81,7 +80,7 @@ func CalcCommP(ctx context.Context, inpath string, rename, addPadding bool) (*Co
 		if _, err := rdr.Seek(carSize, io.SeekStart); err != nil {
 			return nil, fmt.Errorf("seek to start: %w", err)
 		}
-		if err := carv1.PadCar(rdr, carSize); err != nil {
+		if err := PadCar(rdr, carSize); err != nil {
 			return nil, fmt.Errorf("failed to pad car file: %w", err)
 		}
 	}
@@ -107,11 +106,11 @@ func CalcCommPV2(buf *Buffer, addPadding bool) (*CommPRet, error) {
 	if err != nil {
 		return nil, fmt.Errorf("not a car file: %w", err)
 	}
+	buf.SeekStart()
 
 	carSize := int64(buf.Len())
-	buf.SeekStart()
 	pieceReader, pieceSize := padreader.New(buf, uint64(carSize))
-	commP, err := ffiwrapper.GeneratePieceCIDFromFile(arbitraryProofType, pieceReader, pieceSize)
+	commP, err := commp.GeneratePieceCIDFromFile(arbitraryProofType, pieceReader, pieceSize)
 	if err != nil {
 		return nil, fmt.Errorf("computing commP failed: %w", err)
 	}
@@ -124,7 +123,7 @@ func CalcCommPV2(buf *Buffer, addPadding bool) (*CommPRet, error) {
 		// make sure fd point to the end of file
 		// better to check within carv1.PadCar, for now is a workaround
 		buf.Seek(int(carSize))
-		if err := carv1.PadCar(buf, carSize); err != nil {
+		if err := PadCar(buf, carSize); err != nil {
 			return nil, fmt.Errorf("failed to pad car file: %w", err)
 		}
 	}

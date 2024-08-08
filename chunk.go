@@ -28,16 +28,17 @@ type commPCallback struct {
 func (cc *commPCallback) OnSuccess(buf *Buffer, graphName, payloadCid, fsDetail string) {
 	commpStartTime := time.Now()
 
+	log.Info("start to calculate pieceCID")
 	cpRes, err := CalcCommPV2(buf, cc.addPadding)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("calculation of pieceCID failed: %s", err)
 	}
 	log.Infof("calculation of pieceCID completed, time elapsed: %s", time.Since(commpStartTime))
 	log.Infof("piece cid: %s, payload size: %d, size: %d ", cpRes.Root.String(), cpRes.PayloadSize, cpRes.Size)
 
 	buf.SeekStart()
-	if err := os.WriteFile(path.Join(cc.carDir, cpRes.Root.String()+".car"), buf.Bytes(), 0644); err != nil {
-		log.Fatal(err)
+	if err := os.WriteFile(path.Join(cc.carDir, cpRes.Root.String()+".car"), buf.Bytes(), 0o644); err != nil {
+		log.Fatalf("failed to write car file: %s", err)
 	}
 
 	// Add node inof to manifest.csv
@@ -50,7 +51,7 @@ func (cc *commPCallback) OnSuccess(buf *Buffer, graphName, payloadCid, fsDetail 
 	if err != nil && os.IsNotExist(err) {
 		isCreateAction = true
 	}
-	f, err := os.OpenFile(manifestPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(manifestPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -65,8 +66,10 @@ func (cc *commPCallback) OnSuccess(buf *Buffer, graphName, payloadCid, fsDetail 
 		})
 	}
 
-	if err := csvWriter.Write([]string{payloadCid, graphName, cpRes.Root.String(),
-		strconv.FormatInt(cpRes.PayloadSize, 10), strconv.FormatUint(uint64(cpRes.Size), 10), fsDetail}); err != nil {
+	if err := csvWriter.Write([]string{
+		payloadCid, graphName, cpRes.Root.String(),
+		strconv.FormatInt(cpRes.PayloadSize, 10), strconv.FormatUint(uint64(cpRes.Size), 10), fsDetail,
+	}); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -90,7 +93,7 @@ func (cc *csvCallback) OnSuccess(buf *Buffer, graphName, payloadCid, fsDetail st
 	if err != nil && os.IsNotExist(err) {
 		isCreateAction = true
 	}
-	f, err := os.OpenFile(manifestPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(manifestPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -101,7 +104,7 @@ func (cc *csvCallback) OnSuccess(buf *Buffer, graphName, payloadCid, fsDetail st
 		}
 	}
 
-	if err := os.WriteFile(path.Join(cc.carDir, payloadCid+".car"), buf.Bytes(), 0644); err != nil {
+	if err := os.WriteFile(path.Join(cc.carDir, payloadCid+".car"), buf.Bytes(), 0o644); err != nil {
 		log.Fatal(err)
 	}
 
@@ -128,6 +131,7 @@ func CommPCallback(carDir string, rename, addPadding bool) GraphBuildCallback {
 func CSVCallback(carDir string) GraphBuildCallback {
 	return &csvCallback{carDir: carDir}
 }
+
 func ErrCallback() GraphBuildCallback {
 	return &errCallback{}
 }

@@ -105,10 +105,11 @@ func readRecords(path string) (map[string]*MetaData, error) {
 	}
 	return res, nil
 }
+
 func saveRecords(records map[string]*MetaData, path string) error {
 	bs, err := json.Marshal(records)
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(path, bs, 0666)
+	return ioutil.WriteFile(path, bs, 0o666)
 }

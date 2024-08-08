@@ -68,7 +68,7 @@ func NodeWriteTo(nd files.Node, fpath string) error {
 		return nil
 	case files.Directory:
 		if !ExistDir(fpath) {
-			err := os.Mkdir(fpath, 0777)
+			err := os.Mkdir(fpath, 0o777)
 			if err != nil && os.IsNotExist(err) {
 				return err
 			}

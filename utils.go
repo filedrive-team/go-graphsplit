@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/go-padreader"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -33,8 +34,10 @@ import (
 	"github.com/ipld/go-ipld-prime/traversal/selector/builder"
 )
 
-const UnixfsLinksPerLevel = 1 << 10
-const UnixfsChunkSize uint64 = 1 << 20
+const (
+	UnixfsLinksPerLevel        = 1 << 10
+	UnixfsChunkSize     uint64 = 1 << 20
+)
 
 type Finfo struct {
 	Path      string
@@ -125,7 +128,7 @@ func (b *FSBuilder) getNodeByLink(ln *ipld.Link) (fn fsNode, err error) {
 func BuildIpldGraph(ctx context.Context, fileList []Finfo, graphName, parentPath, carDir string, parallel int, cb GraphBuildCallback) {
 	buf, payloadCid, fsDetail, err := buildIpldGraph(ctx, fileList, parentPath, parallel)
 	if err != nil {
-		//log.Fatal(err)
+		// log.Fatal(err)
 		cb.OnError(err)
 		return
 	}
@@ -146,10 +149,10 @@ func buildIpldGraph(ctx context.Context, fileList []Finfo, parentPath string, pa
 	var rootNode *dag.ProtoNode
 	rootNode = unixfs.EmptyDirNode()
 	rootNode.SetCidBuilder(cidBuilder)
-	var rootKey = "root"
+	rootKey := "root"
 	dirNodeMap[rootKey] = rootNode
 
-	fmt.Println("************ start to build ipld **************")
+	log.Info("************ start to build ipld **************")
 	// build file node
 	// parallel build
 	cpun := runtime.NumCPU()
@@ -215,8 +218,8 @@ func buildIpldGraph(ctx context.Context, fileList []Finfo, parentPath string, pa
 			dirNodeMap[rootKey].AddNodeLink(item.Name, fileNode)
 			continue
 		}
-		//log.Info(item.Path)
-		//log.Info(dirList)
+		// log.Info(item.Path)
+		// log.Info(dirList)
 		i := len(dirList) - 1
 		for ; i >= 0; i-- {
 			// get dirNodeMap by index
@@ -263,8 +266,8 @@ func buildIpldGraph(ctx context.Context, fileList []Finfo, parentPath string, pa
 	}
 
 	for _, node := range dirNodeMap {
-		//fmt.Printf("add node to store: %v\n", node)
-		//fmt.Printf("key: %s, links: %v\n", key, len(node.Links()))
+		// fmt.Printf("add node to store: %v\n", node)
+		// fmt.Printf("key: %s, links: %v\n", key, len(node.Links()))
 		dagServ.Add(ctx, node)
 	}
 
@@ -272,7 +275,7 @@ func buildIpldGraph(ctx context.Context, fileList []Finfo, parentPath string, pa
 	log.Infof("root node cid: %s", rootNode.Cid())
 	log.Infof("start to generate car for %s", rootNode.Cid())
 	genCarStartTime := time.Now()
-	//car
+	// car
 	buf := new(Buffer)
 	selector := allSelector()
 	sc := car.NewSelectiveCar(ctx, bs2, []car.Dag{{Root: rootNode.Cid(), Selector: selector}})
@@ -291,7 +294,7 @@ func buildIpldGraph(ctx context.Context, fileList []Finfo, parentPath string, pa
 	if err != nil {
 		return nil, "", "", err
 	}
-	//log.Info(dirNodeMap)
+	// log.Info(dirNodeMap)
 	log.Info("++++++++++++ finished to build ipld +++++++++++++")
 
 	return buf, rootNode.Cid().String(), string(fsNodeBytes), nil
@@ -343,7 +346,7 @@ func (fs *fileSlice) Read(p []byte) (n int, err error) {
 		}
 		fs.offset = fs.start
 	}
-	//fmt.Printf("offset: %d, end: %d, start: %d, size: %d\n", fs.offset, fs.end, fs.start, fs.fileSize)
+	// fmt.Printf("offset: %d, end: %d, start: %d, size: %d\n", fs.offset, fs.end, fs.start, fs.fileSize)
 	if fs.end-fs.offset+1 == 0 {
 		return 0, io.EOF
 	}
@@ -358,7 +361,7 @@ func (fs *fileSlice) Read(p []byte) (n int, err error) {
 			log.Warn(err)
 			return
 		}
-		//fmt.Printf("read num: %d\n", n)
+		// fmt.Printf("read num: %d\n", n)
 		fs.offset += int64(n)
 		return
 	}
@@ -367,7 +370,7 @@ func (fs *fileSlice) Read(p []byte) (n int, err error) {
 	if err != nil {
 		return
 	}
-	//fmt.Printf("read num: %d\n", n)
+	// fmt.Printf("read num: %d\n", n)
 	fs.offset += int64(n)
 
 	return copy(p, b), io.EOF
@@ -527,4 +530,28 @@ type PieceInfo struct {
 type Manifest struct {
 	PayloadCid string `csv:"payload_cid"`
 	Filename   string `csv:"filename"`
+}
+
+type NullReader struct{}
+
+// Read writes NUL bytes into the provided byte slice.
+func (nr NullReader) Read(b []byte) (int, error) {
+	for i := range b {
+		b[i] = 0
+	}
+	return len(b), nil
+}
+
+func PadCar(w io.Writer, carSize int64) error {
+	pieceSize := padreader.PaddedSize(uint64(carSize))
+	if int64(pieceSize) == carSize {
+		return nil
+	}
+	nr := io.LimitReader(NullReader{}, int64(pieceSize)-carSize)
+
+	if _, err := io.Copy(w, nr); err != nil {
+		return err
+	}
+
+	return nil
 }
