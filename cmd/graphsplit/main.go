@@ -99,7 +99,7 @@ var chunkCmd = &cli.Command{
 			return xerrors.Errorf("Unexpected! Slice size has been set as 0")
 		}
 
-		targetPath := c.Args().First()
+		targetPaths := c.Args().Slice()
 		var cb graphsplit.GraphBuildCallback
 		if c.Bool("calc-commp") {
 			cb = graphsplit.CommPCallback(carDir, c.Bool("rename"), c.Bool("add-padding"))
@@ -108,7 +108,7 @@ var chunkCmd = &cli.Command{
 		} else {
 			cb = graphsplit.ErrCallback()
 		}
-		return graphsplit.Chunk(ctx, int64(sliceSize), parentPath, targetPath, carDir, graphName, int(parallel), cb)
+		return graphsplit.Chunk(ctx, int64(sliceSize), parentPath, targetPaths, carDir, graphName, int(parallel), cb)
 	},
 }
 
